@@ -1199,6 +1199,28 @@ export default function Home() {
                 const commentPlain = (r: (typeof rows)[number]) =>
                   r.commentRich.map(seg => (seg.isStrike ? `(${seg.text})` : seg.text)).join('')
 
+                const FILL_CD = { fill: { fgColor: { rgb: 'CCFFFF' }, patternType: 'solid' as const } }
+                const FILL_E = { fill: { fgColor: { rgb: 'A6A6A6' }, patternType: 'solid' as const } }
+
+                function withFill(s: object | undefined, fillRgb: 'CCFFFF' | 'A6A6A6') {
+                  const fill = fillRgb === 'CCFFFF' ? FILL_CD : FILL_E
+                  if (!s || typeof s !== 'object') return { ...fill }
+                  return { ...s, ...fill }
+                }
+
+                /** Ligne 3 du modèle : titres alignés sur l’app + « Total » + gras */
+                const HEADER_ROW_0 = 2
+                const headerLabels = ['NOM', 'Prénom', 'Repas', 'Invité', 'Total', 'Observation'] as const
+                headerLabels.forEach((h, c) => {
+                  const ref = XLSX.utils.encode_cell({ r: HEADER_ROW_0, c })
+                  const prev = ws[ref] as { s?: object } | undefined
+                  const base = prev?.s && typeof prev.s === 'object' ? prev.s : {}
+                  let rowStyle: object = { ...base, font: { ...((base as { font?: object }).font || {}), bold: true } }
+                  if (c === 2 || c === 3) rowStyle = withFill(rowStyle, 'CCFFFF')
+                  if (c === 4) rowStyle = withFill(rowStyle, 'A6A6A6')
+                  ws[ref] = { v: h, t: 's', s: rowStyle }
+                })
+
                 /** Styles des deux premières lignes de données du modèle (bandes alternées A4:F5) */
                 const tplStripe = (i: number, c: number) => {
                   const tplR = 3 + (i % 2)
@@ -1216,7 +1238,12 @@ export default function Home() {
                   const row0 = 3 + i
                   const set = (c: number, val: string | number, t: 's' | 'n') => {
                     const ref = XLSX.utils.encode_cell({ r: row0, c })
-                    const s = tplStripe(i, c)
+                    let s = tplStripe(i, c) as object | undefined
+                    /** Fonds si contenu texte uniquement : C/D → #CCFFFF, E → #A6A6A6 (les compteurs sont des nombres : pas de fond sur ces lignes) */
+                    if (t === 's') {
+                      if (c === 2 || c === 3) s = withFill(s, 'CCFFFF')
+                      if (c === 4) s = withFill(s, 'A6A6A6')
+                    }
                     ws[ref] = t === 'n'
                       ? { v: val, t: 'n', ...(s ? { s } : {}) }
                       : { v: val, t: 's', ...(s ? { s } : {}) }
@@ -1248,7 +1275,7 @@ export default function Home() {
 
               function doCSVExport() {
                 const hasAnyMod = rows.some(r => r.commentRich.some(s => s.isStrike || s.isRed))
-                const header = ['NOM','Prénom','Repas','Invité','Total Retraitement Panier','Observation']
+                const header = ['NOM','Prénom','Repas','Invité','Total','Observation']
                 const dataLines = rows.map(r => [r.emp.nom, r.emp.prenom, r.paye, r.invite, r.total, r.comment])
                 const legend: (string | number)[][] = hasAnyMod
                   ? [[], ['Légende dates modifiées :', '~~ancienne~~ = date supprimée (barrée)', 'ancienne→nouvelle* = date modifiée (* = nouvelle date, rouge dans Excel)']]
@@ -1309,15 +1336,16 @@ export default function Home() {
                       </div>
                       {/* header */}
                       <div className="acm-export-table">
-                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(100px,1fr) minmax(88px,1fr) 72px 72px minmax(96px,120px) minmax(140px,2fr)', gap: 10, padding: '8px 12px 10px', borderBottom: '1.5px solid var(--border)', fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.04em', color: 'var(--primary)', minWidth: 640 }}>
-                        <span>NOM</span><span>Prénom</span>
-                        <span style={{ textAlign:'center' }}>Repas</span>
-                        <span style={{ textAlign:'center' }}>Invité</span>
-                        <span style={{ textAlign:'center', lineHeight: 1.25 }}>Total Retraitement Panier</span>
-                        <span>Observation</span>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(100px,1fr) minmax(88px,1fr) 72px 72px 72px minmax(140px,2fr)', gap: 10, padding: '8px 12px 10px', borderBottom: '1.5px solid var(--border)', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '.04em', color: 'var(--primary)', minWidth: 640 }}>
+                        <span style={{ fontWeight: 700 }}>NOM</span>
+                        <span style={{ fontWeight: 700 }}>Prénom</span>
+                        <span style={{ textAlign: 'center', fontWeight: 700 }}>Repas</span>
+                        <span style={{ textAlign: 'center', fontWeight: 700 }}>Invité</span>
+                        <span style={{ textAlign: 'center', fontWeight: 700 }}>Total</span>
+                        <span style={{ fontWeight: 700 }}>Observation</span>
                       </div>
                       {rows.map(r => (
-                        <div key={r.emp.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(100px,1fr) minmax(88px,1fr) 72px 72px minmax(96px,120px) minmax(140px,2fr)', gap: 10, alignItems: 'center', padding: '12px 12px', borderBottom: '1px solid var(--border)', minWidth: 640 }}
+                        <div key={r.emp.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(100px,1fr) minmax(88px,1fr) 72px 72px 72px minmax(140px,2fr)', gap: 10, alignItems: 'center', padding: '12px 12px', borderBottom: '1px solid var(--border)', minWidth: 640 }}
                           className="acm-summary-row">
                           <span style={{ fontWeight: 600, fontSize: 13 }}>{r.emp.nom}</span>
                           <span style={{ fontSize: 13 }}>{r.emp.prenom}</span>
@@ -1338,7 +1366,7 @@ export default function Home() {
                         </div>
                       ))}
                       {/* totaux */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(100px,1fr) minmax(88px,1fr) 72px 72px minmax(96px,120px) minmax(140px,2fr)', gap: 10, alignItems: 'center', padding: '12px 12px', borderTop: '2px solid var(--primary)', background: 'var(--primary-light)', borderRadius: '0 0 12px 12px', minWidth: 640 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(100px,1fr) minmax(88px,1fr) 72px 72px 72px minmax(140px,2fr)', gap: 10, alignItems: 'center', padding: '12px 12px', borderTop: '2px solid var(--primary)', background: 'var(--primary-light)', borderRadius: '0 0 12px 12px', minWidth: 640 }}>
                         <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 12, textTransform: 'uppercase' as const, letterSpacing: '.05em', gridColumn: '1/3' }}>Total</span>
                         <span style={{ textAlign:'center', fontWeight: 800, fontSize: 15, color: 'var(--primary)' }}>{rows.reduce((a,r)=>a+r.paye,0)}</span>
                         <span style={{ textAlign:'center', fontWeight: 800, fontSize: 15, color: 'var(--primary)' }}>{rows.reduce((a,r)=>a+r.invite,0)}</span>
