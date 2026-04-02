@@ -1,4 +1,16 @@
-export { createClient, createLoginClient } from './supabase/client'
+import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js'
+
+let client: SupabaseClient | undefined
+
+export function createClient(): SupabaseClient {
+  if (!client) {
+    client = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+  }
+  return client
+}
 
 export type Employee = {
   id: string
@@ -24,11 +36,4 @@ export type Meal = {
   original_date: string | null
   employee?: Employee
   inviter?: Employee
-}
-
-export type Profile = {
-  id: string
-  user_id: string
-  approved: boolean
-  created_at: string
 }

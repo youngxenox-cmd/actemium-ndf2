@@ -128,30 +128,38 @@ export default function Home() {
   const [exportMonth, setExportMonth] = useState(nowD.getMonth())
   const [exportYear, setExportYear] = useState(nowD.getFullYear())
 
-  // ── Profil utilisateur ──
-  const [user, setUser] = useState<{ email: string; id: string } | null>(null)
-  const [profile, setProfile] = useState({ nom: '', prenom: '', poste: '', avatar: '' })
+  // ── Profil (stockage local uniquement, sans compte Supabase Auth) ──
+  const [profile, setProfile] = useState({ nom: '', prenom: '', poste: '', avatar: '', email: '' })
   const [showProfile, setShowProfile] = useState(false)
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) {
-        setUser({ email: data.user.email || '', id: data.user.id })
-        const meta = data.user.user_metadata || {}
-        setProfile({ nom: meta.nom || '', prenom: meta.prenom || '', poste: meta.poste || '', avatar: meta.avatar || '' })
+    try {
+      const raw = localStorage.getItem('gdm-local-profile')
+      if (raw) {
+        const p = JSON.parse(raw) as Record<string, string>
+        setProfile({
+          nom: p.nom || '',
+          prenom: p.prenom || '',
+          poste: p.poste || '',
+          avatar: p.avatar || '',
+          email: p.email || '',
+        })
       }
-    })
+    } catch { /* ignore */ }
   }, [])
 
-  async function saveProfile() {
+  function saveProfile() {
     setProfileSaving(true)
-    await supabase.auth.updateUser({ data: { nom: profile.nom, prenom: profile.prenom, poste: profile.poste, avatar: profile.avatar } })
-    setProfileSaving(false)
-    setProfileSaved(true)
-    setTimeout(() => setProfileSaved(false), 2000)
+    try {
+      localStorage.setItem('gdm-local-profile', JSON.stringify(profile))
+    } finally {
+      setProfileSaving(false)
+      setProfileSaved(true)
+      setTimeout(() => setProfileSaved(false), 2000)
+    }
   }
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -564,7 +572,7 @@ export default function Home() {
             <div style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, background: profile.avatar ? 'transparent' : 'linear-gradient(135deg,#3282DE,#9AC00C)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '2px solid var(--border)' }}>
               {profile.avatar
                 ? <img src={profile.avatar} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
-                : <span style={{ color: 'white', fontSize: 13, fontWeight: 700 }}>{(profile.prenom?.[0] || user?.email?.[0] || '?').toUpperCase()}</span>
+                : <span style={{ color: 'white', fontSize: 13, fontWeight: 700 }}>{(profile.prenom?.[0] || profile.email?.[0] || '?').toUpperCase()}</span>
               }
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -572,7 +580,7 @@ export default function Home() {
                 {profile.prenom && profile.nom ? `${profile.prenom} ${profile.nom}` : 'Mon profil'}
               </div>
               <div style={{ fontSize: 11, color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {profile.poste || user?.email || ''}
+                {profile.poste || profile.email || ''}
               </div>
             </div>
             <span style={{ color: 'var(--text3)', fontSize: 12 }}>›</span>
@@ -1292,7 +1300,7 @@ export default function Home() {
                     >
                       {profile.avatar
                         ? <img src={profile.avatar} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
-                        : <span style={{ color: 'white', fontSize: 32, fontWeight: 700 }}>{(profile.prenom?.[0] || user?.email?.[0] || '?').toUpperCase()}</span>
+                        : <span style={{ color: 'white', fontSize: 32, fontWeight: 700 }}>{(profile.prenom?.[0] || profile.email?.[0] || '?').toUpperCase()}</span>
                       }
                     </div>
                     <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
@@ -1302,9 +1310,13 @@ export default function Home() {
                   {/* Email */}
                   <div style={{ marginBottom: 16 }}>
                     <label style={S.label}>Email</label>
-                    <div style={{ padding: '11px 14px', background: 'var(--bg2)', borderRadius: 10, fontSize: 14, color: 'var(--text2)', border: '1px solid var(--border)' }}>
-                      {user?.email || '—'}
-                    </div>
+                    <input
+                      type="email"
+                      style={S.input}
+                      placeholder="vous@exemple.fr"
+                      value={profile.email}
+                      onChange={e => setProfile(p => ({ ...p, email: e.target.value }))}
+                    />
                   </div>
 
                   {/* Prénom + Nom */}
