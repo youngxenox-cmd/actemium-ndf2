@@ -1,6 +1,4 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-
-export const supabase = createClientComponentClient()
+export { createClient, createLoginClient } from './supabase/client'
 
 export type Employee = {
   id: string
@@ -26,4 +24,11 @@ export type Meal = {
   original_date: string | null
   employee?: Employee
   inviter?: Employee
+}
+
+export type Profile = {
+  id: string
+  user_id: string
+  approved: boolean
+  created_at: string
 }

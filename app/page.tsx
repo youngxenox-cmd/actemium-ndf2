@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
-import { supabase, type Employee, type Meal } from '@/lib/supabase'
+import { createClient, type Employee, type Meal } from '@/lib/supabase'
+
+const supabase = createClient()
 
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
 
