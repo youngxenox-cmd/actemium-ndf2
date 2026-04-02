@@ -1212,15 +1212,18 @@ export default function Home() {
 
                 const exportSlice = rows.slice(0, TEMPLATE_MAX_DATA_ROWS)
 
-                /** Rich text Excel (inlineStr) : couleurs par imputation + rouge date modifiée + barré ancienne date */
-                function observationRunsForXlsx(segs: { text: string; isStrike?: boolean; isRed?: boolean; countColor?: string }[]) {
-                  return segs.map(seg => {
-                    if (seg.isRed)
-                      return { t: seg.text, rPr: { color: { rgb: 'CC0000' }, bold: true, sz: 11 } }
-                    if (seg.isStrike)
-                      return { t: seg.text, rPr: { color: { rgb: '666666' }, strike: true, sz: 11 } }
-                    return { t: seg.text, rPr: { color: { rgb: excelTextRgbForCountColor(seg.countColor) }, sz: 11 } }
-                  })
+                /** Texte observation à afficher (xlsx-js-style n’écrit pas correctement inlineStr → on utilise t: 's' + v) */
+                function observationTextePlat(segs: { text: string }[]) {
+                  return segs.map(s => s.text).join('')
+                }
+
+                /** Couleur cellule Observation : rouge si date modifiée, sinon couleur imputation (1er repas / ligne) */
+                function observationRgbCellule(
+                  segs: { isRed?: boolean; isStrike?: boolean }[],
+                  countColorRow: string
+                ) {
+                  if (segs.some(s => s.isRed || s.isStrike)) return 'CC0000'
+                  return excelTextRgbForCountColor(countColorRow)
                 }
 
                 const FILL_CD = { fill: { fgColor: { rgb: 'CCFFFF' }, patternType: 'solid' as const } }
@@ -1247,7 +1250,6 @@ export default function Home() {
 
                 function celluleNonVide(cell: { v?: unknown; t?: string; f?: string; is?: unknown } | undefined) {
                   if (!cell) return false
-                  if (cell.t === 'inlineStr' && Array.isArray(cell.is) && cell.is.length > 0) return true
                   if (typeof cell.f === 'string' && cell.f.length > 0) return true
                   const v = cell.v
                   if (v === undefined || v === null) return false
@@ -1289,6 +1291,25 @@ export default function Home() {
                   ws[ref] = { v: h, t: 's', s: rowStyle }
                 })
 
+                /** Fusions : A1:B1 (titre) et H3:O3 (mémo) — indices 0-based */
+                type MergeRect = { s: { r: number; c: number }; e: { r: number; c: number } }
+                const fusionDemandee: MergeRect[] = [
+                  { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } },
+                  { s: { r: 2, c: 7 }, e: { r: 2, c: 14 } },
+                ]
+                const existantes = (Array.isArray(ws['!merges']) ? ws['!merges'] : []) as MergeRect[]
+                const cle = (m: MergeRect) => `${m.s.r},${m.s.c},${m.e.r},${m.e.c}`
+                const vues = new Set(existantes.map(cle))
+                const merges: MergeRect[] = [...existantes]
+                for (const m of fusionDemandee) {
+                  if (!vues.has(cle(m))) {
+                    merges.push(m)
+                    vues.add(cle(m))
+                  }
+                }
+                ws['!merges'] = merges
+                delete ws['B1']
+
                 /** Styles des deux premières lignes de données du modèle (bandes alternées A4:F5) */
                 const tplStripe = (i: number, c: number) => {
                   const tplR = 3 + (i % 2)
@@ -1322,15 +1343,23 @@ export default function Home() {
                   set(4, r.total, 'n')
                   const refF = XLSX.utils.encode_cell({ r: row0, c: 5 })
                   const sObs = tplStripe(i, 5)
-                  const runs = observationRunsForXlsx(r.commentRich)
+                  const txt = observationTextePlat(r.commentRich)
+                  const rgbObs = observationRgbCellule(r.commentRich, r.countColor)
                   const baseObs =
                     typeof sObs === 'object' && sObs !== null
                       ? { ...sObs, alignment: { vertical: 'center' as const, wrapText: true } }
                       : { alignment: { vertical: 'center' as const, wrapText: true } }
-                  if (runs.length === 0) {
-                    ws[refF] = { v: '', t: 's', s: baseObs }
-                  } else {
-                    ws[refF] = { t: 'inlineStr', is: runs, s: baseObs }
+                  ws[refF] = {
+                    v: txt,
+                    t: 's',
+                    s: {
+                      ...baseObs,
+                      font: {
+                        ...((baseObs as { font?: object }).font || {}),
+                        color: { rgb: rgbObs },
+                        sz: 11,
+                      },
+                    },
                   }
                 })
 
