@@ -5,6 +5,10 @@ import { createClient, type Employee, type Meal } from '@/lib/supabase'
 
 const supabase = createClient()
 
+/** Code d’accès à l’application (contrôle côté client — ne remplace pas une auth serveur) */
+const APP_ACCESS_CODE = 'Actemium2026*'
+const ACCESS_SESSION_KEY = 'gdm-app-access'
+
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
 
 function formatDate(d: string) {
@@ -97,6 +101,10 @@ function getImputation(color: string | null | undefined) {
 }
 
 export default function Home() {
+  const [accessUnlocked, setAccessUnlocked] = useState<boolean | null>(null)
+  const [accessInput, setAccessInput] = useState('')
+  const [accessErr, setAccessErr] = useState(false)
+
   const [tab, setTab] = useState<Tab>('saisie')
   const [employees, setEmployees] = useState<Employee[]>([])
   const [meals, setMeals] = useState<Meal[]>([])
@@ -186,7 +194,18 @@ export default function Home() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { fetchAll() }, [fetchAll])
+  useEffect(() => {
+    try {
+      setAccessUnlocked(sessionStorage.getItem(ACCESS_SESSION_KEY) === '1')
+    } catch {
+      setAccessUnlocked(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (accessUnlocked !== true) return
+    fetchAll()
+  }, [accessUnlocked, fetchAll])
 
   const empById = useMemo(() => Object.fromEntries(employees.map(e => [e.id, e])), [employees])
   function getEmpName(id: string | null) {
@@ -334,8 +353,82 @@ export default function Home() {
     return { paye: s.paye, invite: s.invite }
   }, [summary])
 
+  function submitAccess(e: React.FormEvent) {
+    e.preventDefault()
+    if (accessInput === APP_ACCESS_CODE) {
+      try {
+        sessionStorage.setItem(ACCESS_SESSION_KEY, '1')
+      } catch { /* ignore */ }
+      setAccessErr(false)
+      setAccessUnlocked(true)
+    } else {
+      setAccessErr(true)
+    }
+  }
+
   return (
     <div className="acm-shell">
+      {accessUnlocked === null && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100000, background: 'var(--bg)' }} aria-hidden />
+      )}
+      {accessUnlocked === false && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 100001,
+            background: 'rgba(15,23,42,.92)',
+            backdropFilter: 'blur(14px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <form
+            onSubmit={submitAccess}
+            style={{
+              ...S.modal,
+              maxWidth: 420,
+              width: '100%',
+              margin: 0,
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ marginBottom: 20 }}>
+              <h1 style={{ fontWeight: 700, fontSize: 18, color: 'var(--text)', letterSpacing: '-.02em', marginBottom: 8 }}>
+                Accès à l’application
+              </h1>
+              <p style={{ fontSize: 13, color: 'var(--text3)', lineHeight: 1.55, margin: 0 }}>
+                Saisissez le code fourni pour consulter les données et utiliser les fonctionnalités.
+              </p>
+            </div>
+            <label style={{ ...S.label, marginBottom: 8 }}>Code d’accès</label>
+            <input
+              type="password"
+              autoComplete="off"
+              autoFocus
+              value={accessInput}
+              onChange={e => {
+                setAccessInput(e.target.value)
+                setAccessErr(false)
+              }}
+              placeholder="••••••••••••"
+              style={{ ...S.input, marginBottom: accessErr ? 10 : 18 }}
+            />
+            {accessErr && (
+              <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 0, marginBottom: 14, fontWeight: 600 }}>
+                Code incorrect. Réessayez.
+              </p>
+            )}
+            <button type="submit" style={{ ...S.btnPrimary, width: '100%', justifyContent: 'center', height: 44 }}>
+              Valider
+            </button>
+          </form>
+        </div>
+      )}
+      {accessUnlocked === true && (
+      <>
       {toast.msg && (
         <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 999, background: toast.type === 'ok' ? 'var(--primary)' : 'var(--red)', color: '#fff', padding: '11px 20px', borderRadius: 8, fontWeight: 600, fontSize: 13, boxShadow: '0 4px 20px rgba(0,0,0,.15)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span>{toast.type === 'ok' ? '✓' : '✕'}</span> {toast.msg}
@@ -1374,6 +1467,9 @@ export default function Home() {
           </button>
         ))}
       </nav>
+
+      </>
+      )}
 
       <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:none } }

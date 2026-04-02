@@ -124,14 +124,14 @@ input:hover:not(:focus) { border-color: var(--border2) !important; }
   flex-shrink: 0;
   width: 100%;
   box-sizing: border-box;
-  padding: 20px 12px 12px;
+  padding: 20px 12px 6px;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
 .acm-sidebar-logo {
-  width: 80%;
+  width: 64%;
   max-width: 100%;
   height: auto;
   display: block;
@@ -144,7 +144,7 @@ input:hover:not(:focus) { border-color: var(--border2) !important; }
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 0 12px 4px;
+  padding: 18px 12px 4px;
 }
 
 .acm-nav-item {
