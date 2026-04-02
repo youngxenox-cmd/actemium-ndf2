@@ -1239,8 +1239,13 @@ export default function Home() {
                   const set = (c: number, val: string | number, t: 's' | 'n') => {
                     const ref = XLSX.utils.encode_cell({ r: row0, c })
                     let s = tplStripe(i, c) as object | undefined
-                    /** Fonds si contenu texte uniquement : C/D → #CCFFFF, E → #A6A6A6 (les compteurs sont des nombres : pas de fond sur ces lignes) */
-                    if (t === 's') {
+                    const nonVide =
+                      val !== '' &&
+                      val !== null &&
+                      val !== undefined &&
+                      !(typeof val === 'string' && val.trim() === '')
+                    /** C/D → #CCFFFF, E → #A6A6A6 dès que la cellule a une valeur (chiffre ou texte), y compris 0 */
+                    if (nonVide) {
                       if (c === 2 || c === 3) s = withFill(s, 'CCFFFF')
                       if (c === 4) s = withFill(s, 'A6A6A6')
                     }
