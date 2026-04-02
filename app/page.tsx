@@ -1163,86 +1163,92 @@ export default function Home() {
               })
 
               const monthLabel = `${MONTHS[exportMonth]} ${exportYear}`
+              /** Modèle Excel (public/recap-repas-note-de-frais-template.xlsx) : titres, mémo, lignes 4–120, totaux ligne 121 */
+              const EXCEL_TEMPLATE_PATH = '/recap-repas-note-de-frais-template.xlsx'
+              const TEMPLATE_MAX_DATA_ROWS = 117
 
               async function doExcelExport() {
-                // xlsx-js-style avec rich text inlineStr (format SheetJS rPr direct)
                 const XLSX = await import('xlsx-js-style')
 
-                const TEXT_COLORS: Record<string, string> = {
-                  '#a8e6a3': 'FF000000',
-                  '#a3d4f5': 'FF00B0F0',
-                  '#fde89a': 'FF1ACC1E',
-                  '#7030a0': 'FF7030A0',
-                  '#f5b8c8': 'FF7030A0',
+                if (rows.length > TEMPLATE_MAX_DATA_ROWS) {
+                  showToast(`Excel : les ${rows.length - TEMPLATE_MAX_DATA_ROWS} dernier(s) salarié(s) ne sont pas inclus (tableau limité à ${TEMPLATE_MAX_DATA_ROWS} lignes).`, 'ok')
                 }
 
-                const HEADER_STYLE = {
-                  font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
-                  fill: { fgColor: { rgb: '3282DE' }, patternType: 'solid' },
-                  alignment: { horizontal: 'center', vertical: 'center' },
-                  border: { bottom: { style: 'thin', color: { rgb: '1A5FB8' } } }
+                const res = await fetch(EXCEL_TEMPLATE_PATH)
+                if (!res.ok) {
+                  showToast('Modèle Excel introuvable (recap-repas-note-de-frais-template.xlsx).', 'err')
+                  return
+                }
+                const buf = await res.arrayBuffer()
+                const wb = XLSX.read(buf, { type: 'array', cellStyles: true, cellFormula: true })
+                const oldName = wb.SheetNames[0]
+                const ws = wb.Sheets[oldName]
+                if (!ws) {
+                  showToast('Feuille Excel invalide.', 'err')
+                  return
                 }
 
-                const headerRow = ['Nom','Prénom','Repas payés','Repas invité','Total','Commentaires']
-                  .map(h => ({ v: h, t: 's', s: HEADER_STYLE }))
-
-                /** Nom / prénom toujours en noir ; couleurs repas uniquement sur compteurs + commentaires */
-                const NAME_CELL_STYLE = {
-                  font: { color: { rgb: '000000' }, sz: 10 },
-                  alignment: { vertical: 'center', wrapText: false },
+                const sheetTitle = `Repas ${MONTHS[exportMonth]} ${exportYear}`.slice(0, 31)
+                if (oldName !== sheetTitle) {
+                  wb.SheetNames[0] = sheetTitle
+                  wb.Sheets[sheetTitle] = ws
+                  delete wb.Sheets[oldName]
                 }
 
-                const dataRows = rows.map(r => {
-                  const argbFull = TEXT_COLORS[r.countColor] || 'FF000000'
-                  const rgb      = argbFull.replace('FF', '')
-                  const cellStyle = (bold = false) => ({
-                    font: { color: { rgb }, bold, sz: 10 },
-                    alignment: { vertical: 'center', wrapText: false }
-                  })
+                const exportSlice = rows.slice(0, TEMPLATE_MAX_DATA_ROWS)
+                const commentPlain = (r: (typeof rows)[number]) =>
+                  r.commentRich.map(seg => (seg.isStrike ? `(${seg.text})` : seg.text)).join('')
 
-                  // xlsx-js-style ne supporte pas le rich text intra-cellule à l'écriture.
-                  // Solution : texte clair "ancienne → nouvelle" + cellule entière en rouge
-                  // pour les lignes avec date modifiée.
-                  // Texte plain pour la construction initiale du sheet
-                  const commentPlain = r.commentRich.map(seg =>
-                    seg.isStrike ? `(${seg.text})` : seg.text
-                  ).join('')
+                /** Styles des deux premières lignes de données du modèle (bandes alternées A4:F5) */
+                const tplStripe = (i: number, c: number) => {
+                  const tplR = 3 + (i % 2)
+                  const ref = XLSX.utils.encode_cell({ r: tplR, c })
+                  return ws[ref]?.s
+                }
 
-                  return [
-                    { v: r.emp.nom,    t: 's' as const, s: NAME_CELL_STYLE },
-                    { v: r.emp.prenom, t: 's' as const, s: NAME_CELL_STYLE },
-                    { v: r.paye,       t: 'n' as const, s: cellStyle() },
-                    { v: r.invite,     t: 'n' as const, s: cellStyle() },
-                    { v: r.total,      t: 'n' as const, s: cellStyle(true) },
-                    { v: commentPlain, t: 's' as const, s: cellStyle() },
-                  ]
-                })
+                const obsStyleRed = (base: object | undefined) => {
+                  if (base && typeof base === 'object')
+                    return { ...base, font: { ...(base as { font?: object }).font, color: { rgb: 'CC0000' } }, alignment: { vertical: 'center', wrapText: true } }
+                  return { font: { color: { rgb: 'CC0000' } }, alignment: { vertical: 'center', wrapText: true } }
+                }
 
-                const ws = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows])
-
-                // Cellules commentaire modifiées : texte en rouge (toute la cellule)
-                rows.forEach((r, rowIdx) => {
-                  const hasDateMod = r.commentRich.some(s => s.isStrike || s.isRed)
-                  if (!hasDateMod) return
-                  const cellRef = XLSX.utils.encode_cell({ r: rowIdx + 1, c: 5 })
-                  ws[cellRef] = {
-                    ...ws[cellRef],
-                    s: {
-                      font:      { color: { rgb: 'CC0000' }, sz: 10 },
-                      alignment: { vertical: 'center', wrapText: false }
-                    }
+                exportSlice.forEach((r, i) => {
+                  const row0 = 3 + i
+                  const set = (c: number, val: string | number, t: 's' | 'n') => {
+                    const ref = XLSX.utils.encode_cell({ r: row0, c })
+                    const s = tplStripe(i, c)
+                    ws[ref] = t === 'n'
+                      ? { v: val, t: 'n', ...(s ? { s } : {}) }
+                      : { v: val, t: 's', ...(s ? { s } : {}) }
+                  }
+                  set(0, r.emp.nom, 's')
+                  set(1, r.emp.prenom, 's')
+                  set(2, r.paye, 'n')
+                  set(3, r.invite, 'n')
+                  set(4, r.total, 'n')
+                  const obs = commentPlain(r)
+                  const refF = XLSX.utils.encode_cell({ r: row0, c: 5 })
+                  const sObs = tplStripe(i, 5)
+                  const dateMod = r.commentRich.some(x => x.isStrike || x.isRed)
+                  ws[refF] = {
+                    v: obs,
+                    t: 's',
+                    ...(dateMod
+                      ? { s: obsStyleRed(typeof sObs === 'object' && sObs !== null ? sObs : undefined) }
+                      : (sObs !== undefined && sObs !== null ? { s: sObs } : {})),
                   }
                 })
-                ws['!cols'] = [{ wch: 22 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 8 }, { wch: 80 }]
-                ws['!rows'] = [{ hpt: 20 }, ...dataRows.map(() => ({ hpt: 16 }))]
-                const wb = XLSX.utils.book_new()
-                XLSX.utils.book_append_sheet(wb, ws, monthLabel)
-                XLSX.writeFile(wb, `repas_${exportYear}_${String(exportMonth+1).padStart(2,'0')}.xlsx`)
+
+                XLSX.writeFile(
+                  wb,
+                  `Recap repas note de frais ${MONTHS[exportMonth]} ${exportYear}.xlsx`,
+                  { cellStyles: true }
+                )
               }
 
               function doCSVExport() {
                 const hasAnyMod = rows.some(r => r.commentRich.some(s => s.isStrike || s.isRed))
-                const header = ['Nom','Prénom','Repas payés','Repas invité','Total','Commentaires']
+                const header = ['NOM','Prénom','Repas','Invité','Total Retraitement Panier','Observation']
                 const dataLines = rows.map(r => [r.emp.nom, r.emp.prenom, r.paye, r.invite, r.total, r.comment])
                 const legend: (string | number)[][] = hasAnyMod
                   ? [[], ['Légende dates modifiées :', '~~ancienne~~ = date supprimée (barrée)', 'ancienne→nouvelle* = date modifiée (* = nouvelle date, rouge dans Excel)']]
@@ -1259,7 +1265,7 @@ export default function Home() {
                 <div style={{ display: 'grid', gap: 20 }}>
                   <div>
                     <h1 style={S.pageTitle}>Export</h1>
-                    <p style={S.pageSub}>Exportez les repas par mois de rattachement</p>
+                    <p style={S.pageSub}>Export Excel au format du tableau « REPAS payés sur NOTES DE FRAIS » (mêmes titres et mise en page)</p>
                   </div>
 
                   {/* ── Sélecteur mois ── */}
@@ -1281,7 +1287,7 @@ export default function Home() {
                       <div className="acm-export-buttons" style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
                         <button className="acm-btn-primary" style={{ ...S.btnPrimary, display: 'flex', alignItems: 'center', gap: 7 }}
                           onClick={doExcelExport} disabled={rows.length === 0}>
-                          ⬇ Excel (.xlsx)
+                          ⬇ Excel (modèle NDF)
                         </button>
                         <button style={{ ...S.btnGhost, display: 'flex', alignItems: 'center', gap: 7 }}
                           onClick={doCSVExport} disabled={rows.length === 0}>
@@ -1303,15 +1309,15 @@ export default function Home() {
                       </div>
                       {/* header */}
                       <div className="acm-export-table">
-                      <div style={{ display: 'grid', gridTemplateColumns: '160px 120px 90px 90px 60px 1fr', gap: 10, padding: '8px 12px 10px', borderBottom: '1.5px solid var(--border)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.06em', color: 'var(--primary)', minWidth: 620 }}>
-                        <span>Nom</span><span>Prénom</span>
-                        <span style={{ textAlign:'center' }}>Payés</span>
-                        <span style={{ textAlign:'center' }}>Invités</span>
-                        <span style={{ textAlign:'center' }}>Total</span>
-                        <span>Commentaires</span>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(100px,1fr) minmax(88px,1fr) 72px 72px minmax(96px,120px) minmax(140px,2fr)', gap: 10, padding: '8px 12px 10px', borderBottom: '1.5px solid var(--border)', fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.04em', color: 'var(--primary)', minWidth: 640 }}>
+                        <span>NOM</span><span>Prénom</span>
+                        <span style={{ textAlign:'center' }}>Repas</span>
+                        <span style={{ textAlign:'center' }}>Invité</span>
+                        <span style={{ textAlign:'center', lineHeight: 1.25 }}>Total Retraitement Panier</span>
+                        <span>Observation</span>
                       </div>
                       {rows.map(r => (
-                        <div key={r.emp.id} style={{ display: 'grid', gridTemplateColumns: '160px 120px 90px 90px 60px 1fr', gap: 10, alignItems: 'center', padding: '12px 12px', borderBottom: '1px solid var(--border)', minWidth: 620 }}
+                        <div key={r.emp.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(100px,1fr) minmax(88px,1fr) 72px 72px minmax(96px,120px) minmax(140px,2fr)', gap: 10, alignItems: 'center', padding: '12px 12px', borderBottom: '1px solid var(--border)', minWidth: 640 }}
                           className="acm-summary-row">
                           <span style={{ fontWeight: 600, fontSize: 13 }}>{r.emp.nom}</span>
                           <span style={{ fontSize: 13 }}>{r.emp.prenom}</span>
@@ -1332,7 +1338,7 @@ export default function Home() {
                         </div>
                       ))}
                       {/* totaux */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '160px 120px 90px 90px 60px 1fr', gap: 10, alignItems: 'center', padding: '12px 12px', borderTop: '2px solid var(--primary)', background: 'var(--primary-light)', borderRadius: '0 0 12px 12px', minWidth: 620 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(100px,1fr) minmax(88px,1fr) 72px 72px minmax(96px,120px) minmax(140px,2fr)', gap: 10, alignItems: 'center', padding: '12px 12px', borderTop: '2px solid var(--primary)', background: 'var(--primary-light)', borderRadius: '0 0 12px 12px', minWidth: 640 }}>
                         <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 12, textTransform: 'uppercase' as const, letterSpacing: '.05em', gridColumn: '1/3' }}>Total</span>
                         <span style={{ textAlign:'center', fontWeight: 800, fontSize: 15, color: 'var(--primary)' }}>{rows.reduce((a,r)=>a+r.paye,0)}</span>
                         <span style={{ textAlign:'center', fontWeight: 800, fontSize: 15, color: 'var(--primary)' }}>{rows.reduce((a,r)=>a+r.invite,0)}</span>
