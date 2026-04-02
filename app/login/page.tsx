@@ -46,7 +46,7 @@ function LoginForm() {
         .eq('user_id', data.user.id)
         .maybeSingle()
 
-      if (!profile?.approved) {
+      if (profile && profile.approved === false) {
         await supabase.auth.signOut()
         setError("Votre compte n'est pas encore validé. Contactez un administrateur.")
         setLoading(false)

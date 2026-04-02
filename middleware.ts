@@ -67,7 +67,9 @@ export async function middleware(request: NextRequest) {
       .eq('user_id', user.id)
       .maybeSingle()
 
-    if (!profile?.approved) {
+    // Bloquer seulement si une ligne profil existe avec approved = false.
+    // Pas de ligne profil → accès autorisé (auth seule suffit).
+    if (profile && profile.approved === false) {
       await supabase.auth.signOut()
       const url = request.nextUrl.clone()
       url.pathname = '/login'
