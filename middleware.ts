@@ -1,6 +1,13 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+/** Cookies émis par @supabase/ssr (setAll). */
+type CookieToSet = {
+  name: string
+  value: string
+  options?: Parameters<NextResponse['cookies']['set']>[2]
+}
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request: { headers: request.headers },
@@ -14,7 +21,7 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: CookieToSet[]) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({
             request: { headers: request.headers },
@@ -35,7 +42,7 @@ export async function middleware(request: NextRequest) {
 
   function redirectWithSessionCookies(url: URL) {
     const redirect = NextResponse.redirect(url)
-    supabaseResponse.cookies.getAll().forEach(c => {
+    supabaseResponse.cookies.getAll().forEach((c: { name: string; value: string }) => {
       redirect.cookies.set(c.name, c.value)
     })
     return redirect
