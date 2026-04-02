@@ -104,6 +104,7 @@ export default function Home() {
   const [accessUnlocked, setAccessUnlocked] = useState<boolean | null>(null)
   const [accessInput, setAccessInput] = useState('')
   const [accessErr, setAccessErr] = useState(false)
+  const [showAccessPassword, setShowAccessPassword] = useState(false)
 
   const [tab, setTab] = useState<Tab>('saisie')
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -404,18 +405,54 @@ export default function Home() {
               </p>
             </div>
             <label style={{ ...S.label, marginBottom: 8 }}>Code d’accès</label>
-            <input
-              type="password"
-              autoComplete="off"
-              autoFocus
-              value={accessInput}
-              onChange={e => {
-                setAccessInput(e.target.value)
-                setAccessErr(false)
-              }}
-              placeholder="••••••••••••"
-              style={{ ...S.input, marginBottom: accessErr ? 10 : 18 }}
-            />
+            <div style={{ position: 'relative', marginBottom: accessErr ? 10 : 18 }}>
+              <input
+                type={showAccessPassword ? 'text' : 'password'}
+                autoComplete="off"
+                autoFocus
+                value={accessInput}
+                onChange={e => {
+                  setAccessInput(e.target.value)
+                  setAccessErr(false)
+                }}
+                placeholder="••••••••••••"
+                style={{ ...S.input, paddingRight: 46, marginBottom: 0 }}
+              />
+              <button
+                type="button"
+                aria-label={showAccessPassword ? 'Masquer le code' : 'Afficher le code'}
+                title={showAccessPassword ? 'Masquer' : 'Afficher'}
+                onClick={() => setShowAccessPassword(v => !v)}
+                style={{
+                  position: 'absolute',
+                  right: 6,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text3)',
+                  borderRadius: 8,
+                  lineHeight: 0,
+                }}
+              >
+                {showAccessPassword ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
             {accessErr && (
               <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 0, marginBottom: 14, fontWeight: 600 }}>
                 Code incorrect. Réessayez.
