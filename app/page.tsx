@@ -100,6 +100,20 @@ function getImputation(color: string | null | undefined) {
   return IMPUTATIONS.find(i => i.color === color) || IMPUTATIONS[0]
 }
 
+/** Couleurs de texte Observation à l’export Excel (identique à l’ancien TEXT_COLORS / imputations) */
+const EXCEL_TEXT_RGB_BY_COUNT_COLOR: Record<string, string> = {
+  '#000000': '000000',
+  '#a8e6a3': '000000',
+  '#a3d4f5': '00B0F0',
+  '#fde89a': '1ACC1E',
+  '#7030a0': '7030A0',
+  '#f5b8c8': '7030A0',
+}
+function excelTextRgbForCountColor(hex?: string | null) {
+  const k = (hex || '#a8e6a3').toLowerCase()
+  return EXCEL_TEXT_RGB_BY_COUNT_COLOR[k] || '000000'
+}
+
 export default function Home() {
   const [accessUnlocked, setAccessUnlocked] = useState<boolean | null>(null)
   const [accessInput, setAccessInput] = useState('')
@@ -1073,12 +1087,13 @@ export default function Home() {
               const fmtDM = (d: string) => new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})
 
               // Retourne les segments texte d'un repas pour le commentaire export
-              // Chaque segment : { text, isStrike, isRed }
-              type CommentSegment = { text: string; isStrike?: boolean; isRed?: boolean }
+              // countColor = imputation du repas → couleur Excel (cantine violet, Chanteloup bleu, etc.)
+              type CommentSegment = { text: string; isStrike?: boolean; isRed?: boolean; countColor?: string }
 
               const buildMealSegments = (m: Meal): CommentSegment[] => {
                 const day     = fmtDM(m.date)
                 const origDay = m.original_date ? fmtDM(m.original_date) : null
+                const cc = m.count_color || '#a8e6a3'
                 let prefix = ''
                 if (isCantine(m.count_color))        prefix = 'Cantine le '
                 else if (m.type === 'invite') {
@@ -1090,13 +1105,13 @@ export default function Home() {
                 if (origDay) {
                   // Date modifiée → [prefix] [ancienne barrée] [ → ] [nouvelle rouge]
                   const segs: CommentSegment[] = []
-                  if (prefix) segs.push({ text: prefix })
-                  segs.push({ text: origDay, isStrike: true })
-                  segs.push({ text: '→' })
+                  if (prefix) segs.push({ text: prefix, countColor: cc })
+                  segs.push({ text: origDay, isStrike: true, countColor: cc })
+                  segs.push({ text: '→', countColor: cc })
                   segs.push({ text: day, isRed: true })
                   return segs
                 }
-                return [{ text: `${prefix}${day}` }]
+                return [{ text: `${prefix}${day}`, countColor: cc }]
               }
 
               // Pour CSV : texte brut avec notation "ancienne→nouvelle*"
@@ -1126,7 +1141,7 @@ export default function Home() {
                   })
                 const result: CommentSegment[] = []
                 empMs.forEach((m, i) => {
-                  if (i > 0) result.push({ text: ', ' })
+                  if (i > 0) result.push({ text: ', ', countColor: '#000000' })
                   result.push(...buildMealSegments(m))
                 })
                 return result
@@ -1196,8 +1211,17 @@ export default function Home() {
                 }
 
                 const exportSlice = rows.slice(0, TEMPLATE_MAX_DATA_ROWS)
-                const commentPlain = (r: (typeof rows)[number]) =>
-                  r.commentRich.map(seg => (seg.isStrike ? `(${seg.text})` : seg.text)).join('')
+
+                /** Rich text Excel (inlineStr) : couleurs par imputation + rouge date modifiée + barré ancienne date */
+                function observationRunsForXlsx(segs: { text: string; isStrike?: boolean; isRed?: boolean; countColor?: string }[]) {
+                  return segs.map(seg => {
+                    if (seg.isRed)
+                      return { t: seg.text, rPr: { color: { rgb: 'CC0000' }, bold: true, sz: 11 } }
+                    if (seg.isStrike)
+                      return { t: seg.text, rPr: { color: { rgb: '666666' }, strike: true, sz: 11 } }
+                    return { t: seg.text, rPr: { color: { rgb: excelTextRgbForCountColor(seg.countColor) }, sz: 11 } }
+                  })
+                }
 
                 const FILL_CD = { fill: { fgColor: { rgb: 'CCFFFF' }, patternType: 'solid' as const } }
                 const FILL_E = { fill: { fgColor: { rgb: 'A6A6A6' }, patternType: 'solid' as const } }
@@ -1206,6 +1230,50 @@ export default function Home() {
                   const fill = fillRgb === 'CCFFFF' ? FILL_CD : FILL_E
                   if (!s || typeof s !== 'object') return { ...fill }
                   return { ...s, ...fill }
+                }
+
+                /** Bordures fines sur les 4 côtés (équivalent « Toutes les bordures » Excel) */
+                const BORDER_ALL = {
+                  top: { style: 'thin' as const, color: { rgb: '000000' } },
+                  bottom: { style: 'thin' as const, color: { rgb: '000000' } },
+                  left: { style: 'thin' as const, color: { rgb: '000000' } },
+                  right: { style: 'thin' as const, color: { rgb: '000000' } },
+                }
+
+                function withAllBorders(s: unknown) {
+                  if (s && typeof s === 'object' && !Array.isArray(s)) return { ...s, border: BORDER_ALL }
+                  return { border: BORDER_ALL }
+                }
+
+                function celluleNonVide(cell: { v?: unknown; t?: string; f?: string; is?: unknown } | undefined) {
+                  if (!cell) return false
+                  if (cell.t === 'inlineStr' && Array.isArray(cell.is) && cell.is.length > 0) return true
+                  if (typeof cell.f === 'string' && cell.f.length > 0) return true
+                  const v = cell.v
+                  if (v === undefined || v === null) return false
+                  if (typeof v === 'string' && v.trim() === '') return false
+                  if (cell.t === 'z') return false
+                  return true
+                }
+
+                /** Applique les bordures à toute cellule non vide (titre, mémo, tableau, totaux, formules…) */
+                function appliquerBorduresFeuille() {
+                  const rng = ws['!ref']
+                  if (!rng) return
+                  const range = XLSX.utils.decode_range(rng)
+                  for (let R = range.s.r; R <= range.e.r; R++) {
+                    for (let C = range.s.c; C <= range.e.c; C++) {
+                      const addr = XLSX.utils.encode_cell({ r: R, c: C })
+                      const cell = ws[addr] as { v?: unknown; t?: string; f?: string; s?: unknown } | undefined
+                      if (!celluleNonVide(cell)) continue
+                      const prevS = cell?.s
+                      const merged =
+                        prevS && typeof prevS === 'object' && !Array.isArray(prevS)
+                          ? withAllBorders(prevS)
+                          : withAllBorders(undefined)
+                      ;(ws as Record<string, unknown>)[addr] = { ...cell, s: merged }
+                    }
+                  }
                 }
 
                 /** Ligne 3 du modèle : titres alignés sur l’app + « Total » + gras */
@@ -1226,12 +1294,6 @@ export default function Home() {
                   const tplR = 3 + (i % 2)
                   const ref = XLSX.utils.encode_cell({ r: tplR, c })
                   return ws[ref]?.s
-                }
-
-                const obsStyleRed = (base: object | undefined) => {
-                  if (base && typeof base === 'object')
-                    return { ...base, font: { ...(base as { font?: object }).font, color: { rgb: 'CC0000' } }, alignment: { vertical: 'center', wrapText: true } }
-                  return { font: { color: { rgb: 'CC0000' } }, alignment: { vertical: 'center', wrapText: true } }
                 }
 
                 exportSlice.forEach((r, i) => {
@@ -1258,18 +1320,21 @@ export default function Home() {
                   set(2, r.paye, 'n')
                   set(3, r.invite, 'n')
                   set(4, r.total, 'n')
-                  const obs = commentPlain(r)
                   const refF = XLSX.utils.encode_cell({ r: row0, c: 5 })
                   const sObs = tplStripe(i, 5)
-                  const dateMod = r.commentRich.some(x => x.isStrike || x.isRed)
-                  ws[refF] = {
-                    v: obs,
-                    t: 's',
-                    ...(dateMod
-                      ? { s: obsStyleRed(typeof sObs === 'object' && sObs !== null ? sObs : undefined) }
-                      : (sObs !== undefined && sObs !== null ? { s: sObs } : {})),
+                  const runs = observationRunsForXlsx(r.commentRich)
+                  const baseObs =
+                    typeof sObs === 'object' && sObs !== null
+                      ? { ...sObs, alignment: { vertical: 'center' as const, wrapText: true } }
+                      : { alignment: { vertical: 'center' as const, wrapText: true } }
+                  if (runs.length === 0) {
+                    ws[refF] = { v: '', t: 's', s: baseObs }
+                  } else {
+                    ws[refF] = { t: 'inlineStr', is: runs, s: baseObs }
                   }
                 })
+
+                appliquerBorduresFeuille()
 
                 XLSX.writeFile(
                   wb,
