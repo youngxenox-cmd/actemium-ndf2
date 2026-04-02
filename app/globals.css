@@ -120,12 +120,31 @@ input:hover:not(:focus) { border-color: var(--border2) !important; }
   box-shadow: 2px 0 20px rgba(50,130,222,0.04);
 }
 
+.acm-sidebar-logo-wrap {
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 20px 12px 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.acm-sidebar-logo {
+  width: 80%;
+  max-width: 100%;
+  height: auto;
+  display: block;
+  background: transparent;
+  object-fit: contain;
+}
+
 .acm-nav {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 22px 12px 4px;
+  padding: 0 12px 4px;
 }
 
 .acm-nav-item {
@@ -319,6 +338,7 @@ input[type=date]::-webkit-calendar-picker-indicator {
 @media (max-width: 900px) and (min-width: 641px) {
   :root { --sidebar-w: 64px; }
   .acm-sidebar { width: 64px; align-items: center; padding: 0; }
+  .acm-sidebar-logo-wrap { display: none; }
   .acm-nav { padding: 16px 8px 4px; }
   .acm-nav-item { justify-content: center; padding: 10px; }
   .acm-nav-item span.nav-label { display: none; }

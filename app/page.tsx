@@ -524,6 +524,15 @@ export default function Home() {
 
       {/* ── Sidebar ── */}
       <aside className="acm-sidebar">
+        <div className="acm-sidebar-logo-wrap">
+          <img
+            src="/logo-generale-maintenance.png"
+            alt="Generale de Maintenance"
+            className="acm-sidebar-logo"
+            width={812}
+            height={237}
+          />
+        </div>
         <nav className="acm-nav">
           {([
             { key: 'saisie',   icon: '✎', label: 'Saisie repas' },
