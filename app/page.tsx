@@ -150,7 +150,15 @@ export default function Home() {
   const nowD = new Date()
   const [exportMonth, setExportMonth] = useState(nowD.getMonth())
   const [exportYear, setExportYear] = useState(nowD.getFullYear())
-  const [statsPeriod, setStatsPeriod] = useState(3)
+  const [statsDateStart, setStatsDateStart] = useState(() => {
+    const t = new Date()
+    t.setMonth(t.getMonth() - 3)
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+  })
+  const [statsDateEnd, setStatsDateEnd] = useState(() => {
+    const t = new Date()
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+  })
 
   // ── Profil (stockage local uniquement, sans compte Supabase Auth) ──
   const [profile, setProfile] = useState({ nom: '', prenom: '', poste: '', avatar: '', email: '' })
@@ -1110,15 +1118,31 @@ export default function Home() {
                 return 0
               }
 
-              const periodStart = new Date()
-              periodStart.setMonth(periodStart.getMonth() - statsPeriod)
-              periodStart.setHours(0, 0, 0, 0)
-              const endOfToday = new Date()
-              endOfToday.setHours(23, 59, 59, 999)
+              function parseStatsYmd(ymd: string): Date {
+                const [y, mo, d] = ymd.split('-').map(Number)
+                return new Date(y, mo - 1, d)
+              }
+              const rawS = parseStatsYmd(statsDateStart)
+              rawS.setHours(0, 0, 0, 0)
+              const rawE = parseStatsYmd(statsDateEnd)
+              rawE.setHours(23, 59, 59, 999)
+              let periodStart: Date
+              let periodEnd: Date
+              if (rawS.getTime() <= rawE.getTime()) {
+                periodStart = rawS
+                periodEnd = rawE
+              } else {
+                const a = parseStatsYmd(statsDateEnd)
+                a.setHours(0, 0, 0, 0)
+                const b = parseStatsYmd(statsDateStart)
+                b.setHours(23, 59, 59, 999)
+                periodStart = a
+                periodEnd = b
+              }
 
               const statsMeals = meals.filter(m => {
                 const d = mealReferenceDate(m)
-                return d >= periodStart && d <= endOfToday
+                return d >= periodStart && d <= periodEnd
               })
 
               const impCounts = [0, 0, 0, 0]
@@ -1146,7 +1170,7 @@ export default function Home() {
               const maxTopTotal = Math.max(1, ...top10.map(r => r.total))
 
               const startChartMonth = new Date(periodStart.getFullYear(), periodStart.getMonth(), 1)
-              const endChartMonth = new Date(endOfToday.getFullYear(), endOfToday.getMonth(), 1)
+              const endChartMonth = new Date(periodEnd.getFullYear(), periodEnd.getMonth(), 1)
               const monthKeys: string[] = []
               {
                 const cur = new Date(startChartMonth.getTime())
@@ -1183,35 +1207,46 @@ export default function Home() {
               const pointsPaye = monthlyPaye.map((v, i) => `${xAt(i)},${yAt(v)}`).join(' ')
               const pointsInv = monthlyInv.map((v, i) => `${xAt(i) + 6},${yAt(v)}`).join(' ')
 
+              const statsRangeLabel = `${periodStart.toLocaleDateString('fr-FR')} au ${periodEnd.toLocaleDateString('fr-FR')}`
+              const dateInp: React.CSSProperties = {
+                padding: '8px 12px',
+                borderRadius: 10,
+                border: '1px solid var(--border)',
+                background: 'var(--bg2)',
+                color: 'var(--text)',
+                fontSize: 14,
+                fontFamily: 'inherit',
+                minWidth: 0,
+              }
+
               return (
                 <div style={{ display: 'grid', gap: 24 }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-                    {([1, 2, 3, 6, 12] as const).map(mo => (
-                      <button
-                        key={mo}
-                        type="button"
-                        onClick={() => setStatsPeriod(mo)}
-                        style={{
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: '6px 16px',
-                          borderRadius: 20,
-                          fontSize: 13,
-                          fontWeight: 600,
-                          fontFamily: 'inherit',
-                          background: statsPeriod === mo ? 'var(--primary)' : 'var(--bg3)',
-                          color: statsPeriod === mo ? '#fff' : 'var(--text2)',
-                          transition: 'background .15s, color .15s',
-                        }}
-                      >
-                        {mo} mois
-                      </button>
-                    ))}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 12 }}>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>
+                      Date de début
+                      <input
+                        type="date"
+                        value={statsDateStart}
+                        max={statsDateEnd}
+                        onChange={e => setStatsDateStart(e.target.value)}
+                        style={dateInp}
+                      />
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>
+                      Date de fin
+                      <input
+                        type="date"
+                        value={statsDateEnd}
+                        min={statsDateStart}
+                        onChange={e => setStatsDateEnd(e.target.value)}
+                        style={dateInp}
+                      />
+                    </label>
                   </div>
 
                   <div>
                     <h1 style={S.pageTitle}>Statistiques</h1>
-                    <p style={S.pageSub}>Analyse des repas sur les {statsPeriod} dernier{statsPeriod > 1 ? 's' : ''} mois (glissant)</p>
+                    <p style={S.pageSub}>Analyse des repas du {statsRangeLabel}.</p>
                   </div>
 
                   <div style={S.card} className="acm-card-mobile">
