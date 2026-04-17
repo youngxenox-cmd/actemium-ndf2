@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { useEffect, useLayoutEffect, useState, useCallback, useMemo, useRef } from 'react'
+import type { ChangeEvent, CSSProperties, FormEvent } from 'react'
 import { createClient, type Employee, type Meal } from '@/lib/supabase'
 
 const supabase = createClient()
@@ -19,6 +20,28 @@ function formatDate(d: string) {
 function formatDateShort(d: string) {
   const [, m, day] = d.split('-')
   return `${day}/${m}`
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const h = hex.replace('#', '')
+  if (h.length !== 6) return null
+  return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) }
+}
+
+/** Luminance relative 0–1 (sRGB) — pour lisibilité du texte coloré en mode sombre */
+function colorLuminance(hex: string): number {
+  const o = hexToRgb(hex)
+  if (!o) return 0.5
+  const { r, g, b } = o
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+}
+
+/** Couleur affichée pour le commentaire : en dark, couleurs trop sombres (#0f172a, etc.) → texte secondaire */
+function uiCommentaireColor(stored: string | null | undefined, darkMode: boolean): string {
+  const c = (stored || '#0f172a').trim()
+  if (!darkMode) return c
+  if (colorLuminance(c) < 0.22) return 'var(--text2)'
+  return c
 }
 
 const CANTINE_COLOR = '#7030a0'
@@ -47,8 +70,8 @@ function ColorPicker({ value, onChange, label }: { value: string; onChange: (c: 
       <button type="button" onClick={() => setOpen(o => !o)} style={S.colorTrigger}>
         <span style={{ width: 18, height: 18, borderRadius: 4, background: value, border: '1px solid var(--border2)', flexShrink: 0, display: 'inline-block' }} />
         <span style={{ fontSize: 12, color: 'var(--text2)', fontFamily: 'monospace' }}>{value}</span>
-        <svg style={{ marginLeft: 'auto', flexShrink: 0 }} width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M6 8L1 3h10z" fill="#6b7280"/>
+        <svg style={{ marginLeft: 'auto', flexShrink: 0, color: 'var(--text3)' }} width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 8L1 3h10z" fill="currentColor"/>
         </svg>
       </button>
       {open && (
@@ -73,7 +96,7 @@ function ColorPicker({ value, onChange, label }: { value: string; onChange: (c: 
   )
 }
 
-function SearchInput({ value, onChange, placeholder, inputStyle }: { value: string; onChange: (v: string) => void; placeholder?: string; inputStyle?: React.CSSProperties }) {
+function SearchInput({ value, onChange, placeholder, inputStyle }: { value: string; onChange: (v: string) => void; placeholder?: string; inputStyle?: CSSProperties }) {
   return (
     <div style={{ position: 'relative' }}>
       <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', fontSize: 14, pointerEvents: 'none', opacity: 1, fontWeight: 600 }}>⌕</span>
@@ -160,6 +183,19 @@ export default function Home() {
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
   })
 
+  const [darkMode, setDarkMode] = useState(false)
+  useLayoutEffect(() => {
+    try {
+      setDarkMode(document.documentElement.getAttribute('data-theme') === 'dark')
+    } catch { /* ignore */ }
+  }, [])
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
+    try {
+      localStorage.setItem('theme', darkMode ? 'dark' : 'light')
+    } catch { /* ignore */ }
+  }, [darkMode])
+
   // ── Profil (stockage local uniquement, sans compte Supabase Auth) ──
   const [profile, setProfile] = useState({ nom: '', prenom: '', poste: '', avatar: '', email: '' })
   const [showProfile, setShowProfile] = useState(false)
@@ -194,7 +230,7 @@ export default function Home() {
     }
   }
 
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
@@ -377,7 +413,7 @@ export default function Home() {
     return { paye: s.paye, invite: s.invite }
   }, [summary])
 
-  function submitAccess(e: React.FormEvent) {
+  function submitAccess(e: FormEvent) {
     e.preventDefault()
     if (accessInput === APP_ACCESS_CODE) {
       try {
@@ -490,7 +526,7 @@ export default function Home() {
       {accessUnlocked === true && (
       <>
       {toast.msg && (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 999, background: toast.type === 'ok' ? 'var(--primary)' : 'var(--red)', color: '#fff', padding: '11px 20px', borderRadius: 8, fontWeight: 600, fontSize: 13, boxShadow: '0 4px 20px rgba(0,0,0,.15)', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 999, background: toast.type === 'ok' ? 'var(--primary)' : 'var(--red)', color: 'var(--toast-fg)', padding: '11px 20px', borderRadius: 8, fontWeight: 600, fontSize: 13, boxShadow: 'var(--shadow-md)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span>{toast.type === 'ok' ? '✓' : '✕'}</span> {toast.msg}
         </div>
       )}
@@ -528,13 +564,13 @@ export default function Home() {
                 <span style={editMeal.type === 'paye' ? S.badgePaye : S.badgeInvite}>{editMeal.type === 'paye' ? 'Payé' : 'Invité'}</span>
               </div>
               {editMeal.invited_by && <div><label style={S.label}>Invité par</label><div style={{ color: 'var(--text2)' }}>{getEmpName(editMeal.invited_by)}</div></div>}
-              <div><label style={S.label}>Commentaire</label><input style={S.input} value={editMeal.commentaire || ''} onChange={e => setEditMeal(m => m ? { ...m, commentaire: e.target.value } : m)} /></div>
+              <div><label style={S.label}>Commentaire</label><input style={{ ...S.input, color: uiCommentaireColor(editMeal.commentaire_color, darkMode) }} value={editMeal.commentaire || ''} onChange={e => setEditMeal(m => m ? { ...m, commentaire: e.target.value } : m)} /></div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <ColorPicker label="Couleur commentaire" value={editMeal.commentaire_color || '#0f172a'} onChange={c => setEditMeal(m => m ? { ...m, commentaire_color: c } : m)} />
                 <div>
                         <label style={S.label}>Imputation</label>
                         <div style={{ position: 'relative' }}>
-                          <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, borderRadius: 4, background: editMeal.count_color || '#a8e6a3', border: '1px solid rgba(0,0,0,.12)', pointerEvents: 'none', zIndex: 1 }} />
+                          <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, borderRadius: 4, background: editMeal.count_color || '#a8e6a3', border: '1px solid var(--border2)', pointerEvents: 'none', zIndex: 1 }} />
                           <select style={{ ...S.input, paddingLeft: 32 }} value={editMeal.count_color || '#a8e6a3'} onChange={e => setEditMeal(m => m ? { ...m, count_color: e.target.value } : m)}>
                             {IMPUTATIONS.map(imp => <option key={imp.label} value={imp.color}>{imp.label}</option>)}
                           </select>
@@ -583,7 +619,7 @@ export default function Home() {
               <strong>{getEmpName(confirmDelMeal.employee_id)}</strong> du{' '}
               <strong>{formatDate(confirmDelMeal.date)}</strong>.
             </p>
-            <p style={{ fontSize: 13, color: 'var(--red)', background: 'var(--red-light)', borderRadius: 8, padding: '9px 13px', marginBottom: 20, border: '1px solid #fecaca' }}>
+            <p style={{ fontSize: 13, color: 'var(--red)', background: 'var(--red-light)', borderRadius: 8, padding: '9px 13px', marginBottom: 20, border: '1px solid var(--red-border)' }}>
               ⚠ Cette action est irréversible.
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -604,7 +640,7 @@ export default function Home() {
             <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 10, lineHeight: 1.6 }}>
               Vous êtes sur le point de supprimer <strong>tous les repas de {MONTHS[currentMonth]} {currentYear}</strong> ({monthMeals.length} repas au total).
             </p>
-            <p style={{ fontSize: 13, color: 'var(--red)', background: 'var(--red-light)', borderRadius: 8, padding: '9px 13px', marginBottom: 20, border: '1px solid #fecaca' }}>
+            <p style={{ fontSize: 13, color: 'var(--red)', background: 'var(--red-light)', borderRadius: 8, padding: '9px 13px', marginBottom: 20, border: '1px solid var(--red-border)' }}>
               ⚠ Cette action est irréversible. Tous les repas rattachés à ce mois seront définitivement supprimés.
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -627,7 +663,7 @@ export default function Home() {
             </div>
 
             {/* Aperçu du changement */}
-            <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '12px 16px', marginBottom: 18, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const }}>
+            <div style={{ background: 'var(--bg3)', borderRadius: 10, padding: '12px 16px', marginBottom: 18, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const }}>
               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase' as const, letterSpacing: '.05em' }}>Ancienne date</span>
                 <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text2)', textDecoration: 'line-through', textDecorationColor: '#e53e3e', textDecorationThickness: '2px' }}>
@@ -648,9 +684,9 @@ export default function Home() {
               {/* Option 1 — Supprimer l'ancienne */}
               <button
                 onClick={() => applyDateChange('replace')}
-                style={{ background: '#fff', border: '2px solid var(--border2)', borderRadius: 12, padding: '14px 12px', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s ease', display: 'flex', flexDirection: 'column' as const, gap: 8 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#3282DE'; (e.currentTarget as HTMLButtonElement).style.background = '#F0F6FF' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border2)'; (e.currentTarget as HTMLButtonElement).style.background = '#fff' }}
+                style={{ background: 'var(--bg2)', border: '2px solid var(--border2)', borderRadius: 12, padding: '14px 12px', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s ease', display: 'flex', flexDirection: 'column' as const, gap: 8 }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--primary)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--primary-light)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border2)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg2)' }}
               >
                 <span style={{ fontSize: 22 }}>🗑</span>
                 <div>
@@ -664,9 +700,9 @@ export default function Home() {
               {/* Option 2 — Barrer l'ancienne */}
               <button
                 onClick={() => applyDateChange('strikethrough')}
-                style={{ background: '#fff', border: '2px solid var(--border2)', borderRadius: 12, padding: '14px 12px', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s ease', display: 'flex', flexDirection: 'column' as const, gap: 8 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#e53e3e'; (e.currentTarget as HTMLButtonElement).style.background = '#FFF5F5' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border2)'; (e.currentTarget as HTMLButtonElement).style.background = '#fff' }}
+                style={{ background: 'var(--bg2)', border: '2px solid var(--border2)', borderRadius: 12, padding: '14px 12px', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s ease', display: 'flex', flexDirection: 'column' as const, gap: 8 }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--red)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--red-light)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border2)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg2)' }}
               >
                 <span style={{ fontSize: 22 }}>✍️</span>
                 <div>
@@ -716,6 +752,18 @@ export default function Home() {
             {employees.length} salarié{employees.length !== 1 ? 's' : ''} actifs
           </div>
 
+          <button
+            type="button"
+            className="acm-nav-item"
+            onClick={() => setDarkMode(d => !d)}
+            aria-label={darkMode ? 'Passer en thème clair' : 'Passer en thème sombre'}
+            title={darkMode ? 'Thème clair' : 'Thème sombre'}
+            style={{ marginBottom: 8 }}
+          >
+            <span className="nav-icon" aria-hidden>{darkMode ? '☀️' : '🌙'}</span>
+            <span className="nav-label">{darkMode ? 'Thème clair' : 'Thème sombre'}</span>
+          </button>
+
           {/* Bouton Profil */}
           <button
             onClick={() => setTab('profil')}
@@ -723,10 +771,10 @@ export default function Home() {
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--primary-light)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'var(--bg2)')}
           >
-            <div style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, background: profile.avatar ? 'transparent' : 'linear-gradient(135deg,#3282DE,#9AC00C)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '2px solid var(--border)' }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, background: profile.avatar ? 'transparent' : 'linear-gradient(135deg, var(--primary), var(--secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '2px solid var(--border)' }}>
               {profile.avatar
                 ? <img src={profile.avatar} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
-                : <span style={{ color: 'white', fontSize: 13, fontWeight: 700 }}>{(profile.prenom?.[0] || profile.email?.[0] || '?').toUpperCase()}</span>
+                : <span style={{ color: 'var(--toast-fg)', fontSize: 13, fontWeight: 700 }}>{(profile.prenom?.[0] || profile.email?.[0] || '?').toUpperCase()}</span>
               }
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -754,6 +802,15 @@ export default function Home() {
             <span style={{ height: 16, width: 1, background: 'var(--border2)' }} />
             <span style={{ fontSize: 12, color: 'var(--text3)' }}>Generale de Maintenance</span>
           </span>
+          <button
+            type="button"
+            className="acm-topbar-theme"
+            onClick={() => setDarkMode(d => !d)}
+            aria-label={darkMode ? 'Passer en thème clair' : 'Passer en thème sombre'}
+            title={darkMode ? 'Thème clair' : 'Thème sombre'}
+          >
+            {darkMode ? '☀️' : '🌙'}
+          </button>
         </div>
       <main className="acm-main">
         {loading ? (
@@ -827,14 +884,14 @@ export default function Home() {
                   <div className="acm-grid2" style={{ marginBottom: 16 }}>
                     <div>
                       <label style={S.label}>Commentaire <span style={{ color: 'var(--text3)', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 11 }}> (auto)</span></label>
-                      <input style={S.input} value={mForm.commentaire} placeholder={genCommentaire(mForm.type, mForm.date, undefined, mForm.countColor)} onChange={e => setMForm(f => ({ ...f, commentaire: e.target.value }))} />
+                      <input style={{ ...S.input, color: uiCommentaireColor(mForm.commentaireColor, darkMode) }} value={mForm.commentaire} placeholder={genCommentaire(mForm.type, mForm.date, undefined, mForm.countColor)} onChange={e => setMForm(f => ({ ...f, commentaire: e.target.value }))} />
                     </div>
                     <ColorPicker label="Couleur commentaire" value={mForm.commentaireColor} onChange={c => setMForm(f => ({ ...f, commentaireColor: c }))} />
                   </div>
                   <div style={{ marginBottom: 16 }}>
                     <label style={S.label}>Imputation</label>
                     <div style={{ position: 'relative' }}>
-                      <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, borderRadius: 4, background: mForm.countColor, border: '1px solid rgba(0,0,0,.12)', pointerEvents: 'none', zIndex: 1 }} />
+                      <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, borderRadius: 4, background: mForm.countColor, border: '1px solid var(--border2)', pointerEvents: 'none', zIndex: 1 }} />
                       <select style={{ ...S.input, paddingLeft: 32 }} value={mForm.countColor} onChange={e => setMForm(f => ({ ...f, countColor: e.target.value }))}>
                         {IMPUTATIONS.map(imp => <option key={imp.label} value={imp.color}>{imp.label}</option>)}
                       </select>
@@ -852,9 +909,9 @@ export default function Home() {
                             const emp = employees.find(e => e.id === id)
                             if (!emp) return null
                             return (
-                              <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px 4px 12px', borderRadius: 20, fontSize: 13, fontWeight: 500, background: 'var(--secondary-light)', color: '#3a4a00', border: '1.5px solid #c5d96e' }}>
+                              <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px 4px 12px', borderRadius: 20, fontSize: 13, fontWeight: 500, background: 'var(--secondary-light)', color: 'var(--secondary-fg)', border: '1.5px solid var(--secondary-border)' }}>
                                 {emp.prenom} {emp.nom}
-                                <button type="button" onClick={() => toggleInvite(id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3a4a00', fontSize: 14, lineHeight: 1, padding: '0 2px', opacity: 0.7 }}>×</button>
+                                <button type="button" onClick={() => toggleInvite(id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--secondary-fg)', fontSize: 14, lineHeight: 1, padding: '0 2px', opacity: 0.7 }}>×</button>
                               </span>
                             )
                           })}
@@ -971,7 +1028,12 @@ export default function Home() {
                 {monthMeals.length === 0 ? (
                   <div style={S.card} className="acm-card-mobile"><div style={S.emptyState}>Aucun repas pour {MONTHS[currentMonth]} {currentYear}.</div></div>
                 ) : (() => {
-                  const impColorLight = (hex: string) => { const h = hex.replace('#',''); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return `rgba(${r},${g},${b},0.28)` }
+                  const impColorLight = (hex: string) => {
+                    const h = hex.replace('#', '')
+                    const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16)
+                    const a = darkMode ? 0.42 : 0.28
+                    return `rgba(${r},${g},${b},${a})`
+                  }
                   const visibleEmps = [...filteredEmpForMonth]
                     .filter(e => { const s = summary[e.id] || { paye:0,invite:0 }; return (s.paye+s.invite) > 0 })
                     .sort((a,b) => {
@@ -1037,9 +1099,9 @@ export default function Home() {
                               )}
                             </div>
                             {/* Compteurs */}
-                            <span style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: '#0c1524' }}>{s.paye}</span>
-                            <span style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: '#0c1524' }}>{s.invite}</span>
-                            <span style={{ textAlign: 'center', fontWeight: 800, fontSize: 17, color: '#0c1524' }}>{s.paye+s.invite}</span>
+                            <span style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{s.paye}</span>
+                            <span style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{s.invite}</span>
+                            <span style={{ textAlign: 'center', fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>{s.paye+s.invite}</span>
                             {/* Chips repas */}
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                               {empMeals.map(m => {
@@ -1056,7 +1118,7 @@ export default function Home() {
                                   else { prefix = 'invité le ' }
                                 }
                                 return (
-                                  <div key={m.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 8px 4px 9px', borderRadius: 7, fontSize: 12, background: bg, border: hasDateChange ? '1.5px solid rgba(229,62,62,0.4)' : '1px solid rgba(0,0,0,.07)', color: '#1a1a1a' }}>
+                                  <div key={m.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 8px 4px 9px', borderRadius: 7, fontSize: 12, background: bg, border: hasDateChange ? '1.5px solid rgba(229,62,62,0.45)' : '1px solid var(--border)', color: 'var(--text)' }}>
                                     {hasDateChange ? (
                                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                                         {prefix && <span style={{ fontSize: 11.5, fontWeight: 500 }}>{prefix}</span>}
@@ -1078,11 +1140,11 @@ export default function Home() {
 
                       {/* ── Ligne totaux ── */}
                       {visibleEmps.length > 0 && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '180px 72px 72px 72px 1fr', gap: 12, alignItems: 'center', padding: '12px 12px', borderTop: '2px solid var(--primary)', background: 'var(--primary-light)', borderRadius: '0 0 12px 12px', minWidth: 560 }}>
-                          <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '.05em' }}>Total</span>
-                          <span style={{ textAlign: 'center', fontWeight: 800, fontSize: 16, color: 'var(--primary)' }}>{totalPaye}</span>
-                          <span style={{ textAlign: 'center', fontWeight: 800, fontSize: 16, color: 'var(--primary)' }}>{totalInvite}</span>
-                          <span style={{ textAlign: 'center', fontWeight: 900, fontSize: 18, color: 'var(--primary)' }}>{totalPaye+totalInvite}</span>
+                        <div className="acm-total-bar" style={{ display: 'grid', gridTemplateColumns: '180px 72px 72px 72px 1fr', gap: 12, alignItems: 'center', padding: '12px 12px', borderTop: '2px solid var(--primary)', background: 'var(--primary-light)', borderRadius: '0 0 12px 12px', minWidth: 560 }}>
+                          <span style={{ fontWeight: 700, color: 'var(--totals-fg)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '.05em' }}>Total</span>
+                          <span style={{ textAlign: 'center', fontWeight: 800, fontSize: 16, color: 'var(--totals-fg)' }}>{totalPaye}</span>
+                          <span style={{ textAlign: 'center', fontWeight: 800, fontSize: 16, color: 'var(--totals-fg)' }}>{totalInvite}</span>
+                          <span style={{ textAlign: 'center', fontWeight: 900, fontSize: 18, color: 'var(--totals-fg)' }}>{totalPaye+totalInvite}</span>
                         </div>
                       )}
                       </div>{/* end acm-monthly-table */}
@@ -1208,7 +1270,7 @@ export default function Home() {
               const pointsInv = monthlyInv.map((v, i) => `${xAt(i) + 6},${yAt(v)}`).join(' ')
 
               const statsRangeLabel = `${periodStart.toLocaleDateString('fr-FR')} au ${periodEnd.toLocaleDateString('fr-FR')}`
-              const dateInp: React.CSSProperties = {
+              const dateInp: CSSProperties = {
                 padding: '8px 12px',
                 borderRadius: 10,
                 border: '1px solid var(--border)',
@@ -1311,7 +1373,7 @@ export default function Home() {
                                   <td style={{ padding: '12px 8px', textAlign: 'center' }}>{r.invite}</td>
                                   <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 800 }}>{r.total}</td>
                                   <td style={{ padding: '12px 8px', verticalAlign: 'middle' }}>
-                                    <div style={{ height: 8, borderRadius: 4, width: `${barW}%`, minWidth: 4, background: 'rgba(0, 51, 107, 0.2)', position: 'relative', overflow: 'hidden' }}>
+                                    <div style={{ height: 8, borderRadius: 4, width: `${barW}%`, minWidth: 4, background: 'var(--primary-light)', position: 'relative', overflow: 'hidden' }}>
                                       <div style={{ display: 'flex', height: '100%', width: '100%' }}>
                                         <div style={{ width: `${wPaye}%`, background: 'var(--primary)' }} />
                                         <div style={{ width: `${wInv}%`, background: 'var(--secondary)' }} />
@@ -1776,9 +1838,9 @@ export default function Home() {
                           <span style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>
                             {r.commentRich.map((seg, i) =>
                               seg.isStrike ? (
-                                <span key={i} style={{ textDecoration: 'line-through', textDecorationColor: '#e53e3e', textDecorationThickness: '2px', color: '#999', opacity: 0.8 }}>{seg.text}</span>
+                                <span key={i} style={{ textDecoration: 'line-through', textDecorationColor: 'var(--red)', textDecorationThickness: '2px', color: 'var(--text3)', opacity: 0.85 }}>{seg.text}</span>
                               ) : seg.isRed ? (
-                                <span key={i} style={{ color: '#e53e3e', fontWeight: 700 }}>{seg.text}</span>
+                                <span key={i} style={{ color: 'var(--red)', fontWeight: 700 }}>{seg.text}</span>
                               ) : (
                                 <span key={i}>{seg.text}</span>
                               )
@@ -1787,11 +1849,11 @@ export default function Home() {
                         </div>
                       ))}
                       {/* totaux */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(100px,1fr) minmax(88px,1fr) 72px 72px 72px minmax(140px,2fr)', gap: 10, alignItems: 'center', padding: '12px 12px', borderTop: '2px solid var(--primary)', background: 'var(--primary-light)', borderRadius: '0 0 12px 12px', minWidth: 640 }}>
-                        <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 12, textTransform: 'uppercase' as const, letterSpacing: '.05em', gridColumn: '1/3' }}>Total</span>
-                        <span style={{ textAlign:'center', fontWeight: 800, fontSize: 15, color: 'var(--primary)' }}>{rows.reduce((a,r)=>a+r.paye,0)}</span>
-                        <span style={{ textAlign:'center', fontWeight: 800, fontSize: 15, color: 'var(--primary)' }}>{rows.reduce((a,r)=>a+r.invite,0)}</span>
-                        <span style={{ textAlign:'center', fontWeight: 900, fontSize: 17, color: 'var(--primary)' }}>{rows.reduce((a,r)=>a+r.total,0)}</span>
+                      <div className="acm-total-bar" style={{ display: 'grid', gridTemplateColumns: 'minmax(100px,1fr) minmax(88px,1fr) 72px 72px 72px minmax(140px,2fr)', gap: 10, alignItems: 'center', padding: '12px 12px', borderTop: '2px solid var(--primary)', background: 'var(--primary-light)', borderRadius: '0 0 12px 12px', minWidth: 640 }}>
+                        <span style={{ fontWeight: 700, color: 'var(--totals-fg)', fontSize: 12, textTransform: 'uppercase' as const, letterSpacing: '.05em', gridColumn: '1/3' }}>Total</span>
+                        <span style={{ textAlign:'center', fontWeight: 800, fontSize: 15, color: 'var(--totals-fg)' }}>{rows.reduce((a,r)=>a+r.paye,0)}</span>
+                        <span style={{ textAlign:'center', fontWeight: 800, fontSize: 15, color: 'var(--totals-fg)' }}>{rows.reduce((a,r)=>a+r.invite,0)}</span>
+                        <span style={{ textAlign:'center', fontWeight: 900, fontSize: 17, color: 'var(--totals-fg)' }}>{rows.reduce((a,r)=>a+r.total,0)}</span>
                         <span />
                       </div>
                       </div>{/* end acm-export-table */}
@@ -1880,12 +1942,12 @@ export default function Home() {
                   {/* Avatar */}
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 28, gap: 10 }}>
                     <div
-                      style={{ width: 88, height: 88, borderRadius: '50%', background: profile.avatar ? 'transparent' : 'linear-gradient(135deg,#3282DE,#9AC00C)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '3px solid var(--border)', cursor: 'pointer', position: 'relative' }}
+                      style={{ width: 88, height: 88, borderRadius: '50%', background: profile.avatar ? 'transparent' : 'linear-gradient(135deg, var(--primary), var(--secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '3px solid var(--border)', cursor: 'pointer', position: 'relative' }}
                       onClick={() => fileInputRef.current?.click()}
                     >
                       {profile.avatar
                         ? <img src={profile.avatar} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
-                        : <span style={{ color: 'white', fontSize: 32, fontWeight: 700 }}>{(profile.prenom?.[0] || profile.email?.[0] || '?').toUpperCase()}</span>
+                        : <span style={{ color: 'var(--toast-fg)', fontSize: 32, fontWeight: 700 }}>{(profile.prenom?.[0] || profile.email?.[0] || '?').toUpperCase()}</span>
                       }
                     </div>
                     <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
@@ -1933,7 +1995,7 @@ export default function Home() {
                   <button
                     onClick={saveProfile}
                     disabled={profileSaving}
-                    style={{ padding: '12px 28px', background: profileSaved ? '#059669' : 'linear-gradient(135deg,#3282DE,#2670c7)', color: 'white', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', transition: 'all .2s ease', boxShadow: '0 4px 14px rgba(50,130,222,0.25)' }}
+                    style={{ padding: '12px 28px', background: profileSaved ? 'var(--green)' : 'linear-gradient(135deg, var(--primary), var(--primary-hover))', color: 'var(--toast-fg)', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', transition: 'all .2s ease', boxShadow: 'var(--shadow-md)' }}
                   >
                     {profileSaving ? 'Enregistrement...' : profileSaved ? '✓ Profil sauvegardé' : 'Enregistrer les modifications'}
                   </button>
@@ -1971,17 +2033,17 @@ export default function Home() {
         button:disabled { opacity: 0.4; cursor: not-allowed; }
         select { appearance: auto; }
         .acm-tr { transition: background 200ms ease; }
-        .acm-tr:hover { background: #F9FBFF !important; }
+        .acm-tr:hover { background: var(--row-hover) !important; }
         .acm-summary-row { transition: background 200ms ease; }
-        .acm-summary-row:hover { background: #F9FBFF !important; }
-        input:hover:not(:focus) { border-color: #CBD5E1 !important; }
-        .acm-btn-primary { background: linear-gradient(135deg, #3282DE 0%, #5AA7FF 100%) !important; box-shadow: 0 4px 14px rgba(50,130,222,0.25) !important; transition: all 0.2s ease !important; }
-        .acm-btn-primary:hover:not(:disabled) { transform: translateY(-1px) !important; box-shadow: 0 10px 25px rgba(50,130,222,0.35) !important; filter: brightness(1.05); }
-        .acm-btn-primary:active:not(:disabled) { transform: translateY(0) !important; box-shadow: 0 2px 8px rgba(50,130,222,0.25) !important; }
-        .acm-btn-ghost:hover:not(:disabled) { background: #F8FAFC !important; border-color: #CBD5E1 !important; color: var(--text) !important; }
-        .acm-btn-danger:hover:not(:disabled) { background: #fee2e2 !important; border-color: #fca5a5 !important; }
+        .acm-summary-row:hover { background: var(--row-hover) !important; }
+        input:hover:not(:focus) { border-color: var(--input-hover-bd) !important; }
+        .acm-btn-primary { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-end) 100%) !important; box-shadow: 0 4px 14px var(--primary-glow) !important; transition: all 0.2s ease !important; }
+        .acm-btn-primary:hover:not(:disabled) { transform: translateY(-1px) !important; box-shadow: 0 10px 25px var(--primary-glow) !important; filter: brightness(1.05); }
+        .acm-btn-primary:active:not(:disabled) { transform: translateY(0) !important; box-shadow: 0 2px 8px var(--primary-glow) !important; }
+        .acm-btn-ghost:hover:not(:disabled) { background: var(--btn-ghost-hover) !important; border-color: var(--input-hover-bd) !important; color: var(--text) !important; }
+        .acm-btn-danger:hover:not(:disabled) { background: var(--btn-danger-hover) !important; border-color: var(--btn-danger-bd) !important; }
         .acm-btn-outline:hover { background: var(--primary-light) !important; border-color: var(--primary) !important; }
-        .acm-icon-btn:hover { background: #F1F5FF !important; color: var(--primary) !important; }
+        .acm-icon-btn:hover { background: var(--icon-btn-hover) !important; color: var(--primary) !important; }
         button.acm-nav-btn:hover { background: var(--primary-light) !important; border-color: var(--primary) !important; }
         button, a, input, select { transition: all 0.2s ease; }
         @media (max-width: 700px) {
@@ -2033,28 +2095,28 @@ function StatBox({ num, label, color, big }: { num: number; label: string; color
 
 const S = {
   // ── Cards ──
-  card: { background: '#FFFFFF', border: '1px solid rgba(226,232,240,0.7)', borderRadius: 14, padding: '28px', boxShadow: '0 15px 40px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.03)' } as React.CSSProperties,
-  cardSecondary: { background: '#FCFDFF', border: '1px solid rgba(226,232,240,0.6)', borderRadius: 14, padding: '28px', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' } as React.CSSProperties,
-  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22, gap: 12 } as React.CSSProperties,
-  cardTitle: { fontWeight: 600, fontSize: 15.5, color: 'var(--text)', letterSpacing: '-.02em' } as React.CSSProperties,
-  pageTitle: { fontWeight: 600, fontSize: 24, color: '#0F172A', letterSpacing: '-.03em', lineHeight: 1.3, borderLeft: '4px solid #3282DE', paddingLeft: 14 } as React.CSSProperties,
-  pageSub: { fontSize: 14, color: '#64748B', marginTop: 6, fontWeight: 400, paddingLeft: 18 } as React.CSSProperties,
+  card: { background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 14, padding: '28px', boxShadow: 'var(--shadow)' } as CSSProperties,
+  cardSecondary: { background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 14, padding: '28px', boxShadow: 'var(--shadow-md)' } as CSSProperties,
+  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22, gap: 12 } as CSSProperties,
+  cardTitle: { fontWeight: 600, fontSize: 15.5, color: 'var(--text)', letterSpacing: '-.02em' } as CSSProperties,
+  pageTitle: { fontWeight: 600, fontSize: 24, color: 'var(--text)', letterSpacing: '-.03em', lineHeight: 1.3, borderLeft: '4px solid var(--primary)', paddingLeft: 14 } as CSSProperties,
+  pageSub: { fontSize: 14, color: 'var(--text3)', marginTop: 6, fontWeight: 400, paddingLeft: 18 } as CSSProperties,
   // ── Form ──
-  label: { display: 'flex', alignItems: 'flex-end', minHeight: 20, fontSize: 12, fontWeight: 600, color: 'var(--text2)', letterSpacing: '.03em', marginBottom: 7, textTransform: 'uppercase' as const } as React.CSSProperties,
-  input: { width: '100%', background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: 'var(--text)', outline: 'none', transition: 'border-color .15s, box-shadow .15s', height: 42, boxShadow: 'none' } as React.CSSProperties,
+  label: { display: 'flex', alignItems: 'flex-end', minHeight: 20, fontSize: 12, fontWeight: 600, color: 'var(--text2)', letterSpacing: '.03em', marginBottom: 7, textTransform: 'uppercase' as const } as CSSProperties,
+  input: { width: '100%', background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: 'var(--text)', outline: 'none', transition: 'border-color .15s, box-shadow .15s', height: 42, boxShadow: 'none' } as CSSProperties,
   // ── Buttons ──
-  btnPrimary: { background: 'linear-gradient(135deg, #3282DE 0%, #5AA7FF 100%)', color: '#fff', border: 'none', borderRadius: 10, padding: '0 22px', fontWeight: 600, fontSize: 13.5, cursor: 'pointer', transition: 'all 0.2s ease', whiteSpace: 'nowrap', height: 42, display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 8px rgba(50,130,222,0.25)' } as React.CSSProperties,
-  btnGhost: { background: 'var(--bg)', color: 'var(--text2)', border: '1px solid var(--border2)', borderRadius: 10, padding: '0 18px', fontWeight: 500, fontSize: 13, cursor: 'pointer', transition: 'all .15s', height: 38, display: 'inline-flex', alignItems: 'center' } as React.CSSProperties,
-  btnOutline: { background: 'transparent', color: 'var(--primary)', border: '1.5px solid var(--primary)', borderRadius: 10, padding: '0 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', height: 36, display: 'inline-flex', alignItems: 'center' } as React.CSSProperties,
-  btnDanger: { background: 'var(--red-light)', color: 'var(--red)', border: '1px solid #fecaca', borderRadius: 10, padding: '0 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', height: 36, display: 'inline-flex', alignItems: 'center' } as React.CSSProperties,
-  iconBtn: { background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: '5px 7px', fontSize: 14, borderRadius: 7, transition: 'color .1s, background .1s', display: 'inline-flex', alignItems: 'center' } as React.CSSProperties,
-  navBtn: { background: 'var(--bg)', border: '1px solid var(--border2)', color: 'var(--primary)', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', fontSize: 18, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' } as React.CSSProperties,
+  btnPrimary: { background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-end) 100%)', color: 'var(--toast-fg)', border: 'none', borderRadius: 10, padding: '0 22px', fontWeight: 600, fontSize: 13.5, cursor: 'pointer', transition: 'all 0.2s ease', whiteSpace: 'nowrap', height: 42, display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 8px var(--primary-glow)' } as CSSProperties,
+  btnGhost: { background: 'var(--bg)', color: 'var(--text2)', border: '1px solid var(--border2)', borderRadius: 10, padding: '0 18px', fontWeight: 500, fontSize: 13, cursor: 'pointer', transition: 'all .15s', height: 38, display: 'inline-flex', alignItems: 'center' } as CSSProperties,
+  btnOutline: { background: 'transparent', color: 'var(--primary)', border: '1.5px solid var(--primary)', borderRadius: 10, padding: '0 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', height: 36, display: 'inline-flex', alignItems: 'center' } as CSSProperties,
+  btnDanger: { background: 'var(--red-light)', color: 'var(--red)', border: '1px solid var(--red-border)', borderRadius: 10, padding: '0 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', height: 36, display: 'inline-flex', alignItems: 'center' } as CSSProperties,
+  iconBtn: { background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: '5px 7px', fontSize: 14, borderRadius: 7, transition: 'color .1s, background .1s', display: 'inline-flex', alignItems: 'center' } as CSSProperties,
+  navBtn: { background: 'var(--bg)', border: '1px solid var(--border2)', color: 'var(--primary)', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', fontSize: 18, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' } as CSSProperties,
   // ── Badges ──
-  badge: { background: 'var(--primary-light)', color: 'var(--primary)', padding: '3px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, border: '1px solid rgba(50,130,222,0.15)' } as React.CSSProperties,
-  badgePaye: { display: 'inline-flex', alignItems: 'center', padding: '3px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: 'rgba(34,197,94,0.1)', color: '#15803d', border: '1px solid rgba(34,197,94,0.2)' } as React.CSSProperties,
-  badgeInvite: { display: 'inline-flex', alignItems: 'center', padding: '3px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: 'var(--primary-light)', color: 'var(--primary)', border: '1px solid rgba(50,130,222,0.15)' } as React.CSSProperties,
+  badge: { background: 'var(--primary-light)', color: 'var(--primary)', padding: '3px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, border: '1px solid var(--focus-ring)' } as CSSProperties,
+  badgePaye: { display: 'inline-flex', alignItems: 'center', padding: '3px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: 'var(--green-light)', color: 'var(--green-fg)', border: '1px solid var(--green-border)' } as CSSProperties,
+  badgeInvite: { display: 'inline-flex', alignItems: 'center', padding: '3px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: 'var(--primary-light)', color: 'var(--primary)', border: '1px solid var(--focus-ring)' } as CSSProperties,
   // ── Tables ──
-  tableWrap: { } as React.CSSProperties,
+  tableWrap: { } as CSSProperties,
   tableHead: {
     display: 'grid',
     gridTemplateColumns: '64px minmax(0, 1fr) 92px 64px',
@@ -2068,7 +2130,7 @@ const S = {
     textTransform: 'uppercase',
     letterSpacing: '.08em',
     minWidth: 320,
-  } as React.CSSProperties,
+  } as CSSProperties,
   tableRow: {
     display: 'grid',
     gridTemplateColumns: '64px minmax(0, 1fr) 92px 64px',
@@ -2078,18 +2140,18 @@ const S = {
     borderBottom: '1px solid var(--border)',
     transition: 'background .1s',
     minWidth: 320,
-  } as React.CSSProperties,
-  summaryCard: { background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 24px', boxShadow: 'var(--shadow)', borderLeft: '3px solid var(--secondary)' } as React.CSSProperties,
-  summaryHead: { display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px', gap: 12, padding: '8px 16px 10px', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '.06em', color: 'var(--text3)' } as React.CSSProperties,
-  summaryRow: { display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px', gap: 12, alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid var(--border)', transition: 'background .15s' } as React.CSSProperties,
-  emptyState: { textAlign: 'center', padding: '52px 0', color: 'var(--text3)', fontSize: 13 } as React.CSSProperties,
+  } as CSSProperties,
+  summaryCard: { background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 24px', boxShadow: 'var(--shadow)', borderLeft: '3px solid var(--secondary)' } as CSSProperties,
+  summaryHead: { display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px', gap: 12, padding: '8px 16px 10px', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '.06em', color: 'var(--text3)' } as CSSProperties,
+  summaryRow: { display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px', gap: 12, alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid var(--border)', transition: 'background .15s' } as CSSProperties,
+  emptyState: { textAlign: 'center', padding: '52px 0', color: 'var(--text3)', fontSize: 13 } as CSSProperties,
   // ── Modals ──
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(8,15,35,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(10px)' } as React.CSSProperties,
-  modal: { background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 16, padding: '30px 30px 26px', width: 500, maxWidth: '95vw', boxShadow: '0 24px 64px rgba(0,0,0,.16), 0 0 0 1px var(--border)' } as React.CSSProperties,
-  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22, paddingBottom: 18, borderBottom: '1px solid var(--border)' } as React.CSSProperties,
-  modalTitle: { fontWeight: 700, fontSize: 15.5, color: 'var(--text)', letterSpacing: '-.015em' } as React.CSSProperties,
-  closeBtn: { background: 'var(--bg3)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer', fontSize: 13, padding: '5px 10px', borderRadius: 7, lineHeight: 1, fontWeight: 600, transition: 'all .15s' } as React.CSSProperties,
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(8,15,35,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(10px)' } as CSSProperties,
+  modal: { background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 16, padding: '30px 30px 26px', width: 500, maxWidth: '95vw', boxShadow: '0 24px 64px rgba(0,0,0,.16), 0 0 0 1px var(--border)' } as CSSProperties,
+  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22, paddingBottom: 18, borderBottom: '1px solid var(--border)' } as CSSProperties,
+  modalTitle: { fontWeight: 700, fontSize: 15.5, color: 'var(--text)', letterSpacing: '-.015em' } as CSSProperties,
+  closeBtn: { background: 'var(--bg3)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer', fontSize: 13, padding: '5px 10px', borderRadius: 7, lineHeight: 1, fontWeight: 600, transition: 'all .15s' } as CSSProperties,
   // ── Color picker ──
-  colorTrigger: { display: 'flex', alignItems: 'center', gap: 8, background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '9px 13px', cursor: 'pointer', color: 'var(--text)', width: '100%', height: 42, transition: 'border-color .15s', boxShadow: 'none' } as React.CSSProperties,
-  colorPanel: { position: 'absolute', top: '100%', left: 0, zIndex: 200, marginTop: 6, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 14, padding: 16, boxShadow: 'var(--shadow-md)', width: 240, minWidth: 210 } as React.CSSProperties,
+  colorTrigger: { display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 10, padding: '9px 13px', cursor: 'pointer', color: 'var(--text)', width: '100%', height: 42, transition: 'border-color .15s', boxShadow: 'none' } as CSSProperties,
+  colorPanel: { position: 'absolute', top: '100%', left: 0, zIndex: 200, marginTop: 6, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 14, padding: 16, boxShadow: 'var(--shadow-md)', width: 240, minWidth: 210 } as CSSProperties,
 }
