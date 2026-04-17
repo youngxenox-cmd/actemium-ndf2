@@ -87,7 +87,7 @@ function SearchInput({ value, onChange, placeholder, inputStyle }: { value: stri
   )
 }
 
-type Tab = 'saisie' | 'mensuel' | 'salaries' | 'export' | 'profil'
+type Tab = 'saisie' | 'mensuel' | 'stats' | 'salaries' | 'export' | 'profil'
 
 const IMPUTATIONS = [
   { label: 'Vélizy',     color: '#a8e6a3' },
@@ -150,6 +150,7 @@ export default function Home() {
   const nowD = new Date()
   const [exportMonth, setExportMonth] = useState(nowD.getMonth())
   const [exportYear, setExportYear] = useState(nowD.getFullYear())
+  const [statsPeriod, setStatsPeriod] = useState(3)
 
   // ── Profil (stockage local uniquement, sans compte Supabase Auth) ──
   const [profile, setProfile] = useState({ nom: '', prenom: '', poste: '', avatar: '', email: '' })
@@ -691,6 +692,7 @@ export default function Home() {
           {([
             { key: 'saisie',   icon: '✎', label: 'Saisie repas' },
             { key: 'mensuel',  icon: '◫', label: 'Vue mensuelle' },
+            { key: 'stats',    icon: '▦', label: 'Statistiques' },
             { key: 'export',   icon: '⬇', label: 'Export' },
             { key: 'salaries', icon: '☰', label: 'Salariés' },
           ] as { key: Tab; icon: string; label: string }[]).map(item => (
@@ -738,7 +740,7 @@ export default function Home() {
         <div className="acm-topbar">
           {/* Page title */}
           <span className="acm-topbar-page" style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', letterSpacing: '-.01em' }}>
-            {tab === 'saisie' ? 'Saisie des repas' : tab === 'mensuel' ? 'Vue mensuelle' : tab === 'export' ? 'Export' : tab === 'profil' ? 'Mon profil' : 'Gestion des salariés'}
+            {tab === 'saisie' ? 'Saisie des repas' : tab === 'mensuel' ? 'Vue mensuelle' : tab === 'stats' ? 'Statistiques' : tab === 'export' ? 'Export' : tab === 'profil' ? 'Mon profil' : 'Gestion des salariés'}
           </span>
           <span className="acm-topbar-breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ height: 16, width: 1, background: 'var(--border2)' }} />
@@ -1081,6 +1083,292 @@ export default function Home() {
                 })()}
               </div>
             )}
+
+            {tab === 'stats' && (() => {
+              const STATS_IMPUTATIONS = [
+                { label: 'Vélizy', color: '#a8e6a3' },
+                { label: 'Chanteloup', color: '#a3d4f5' },
+                { label: 'Verneuil', color: '#fde89a' },
+                { label: 'Cantine', color: '#f5b8c8' },
+              ] as const
+              const MONTH_SHORT_FR = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc']
+
+              function mealReferenceDate(m: Meal): Date {
+                const ref = m.target_month ?? m.date
+                if (!ref) return new Date(0)
+                const s = ref.slice(0, 10)
+                if (s.length === 7) return new Date(`${s}-01T12:00:00`)
+                return new Date(s.includes('T') ? s : `${s}T12:00:00`)
+              }
+
+              function statsImputationIndex(countColor: string | null | undefined): number {
+                const c = (countColor || '#a8e6a3').toLowerCase()
+                if (c === '#a8e6a3') return 0
+                if (c === '#a3d4f5') return 1
+                if (c === '#fde89a') return 2
+                if (c === '#7030a0' || c === '#f5b8c8') return 3
+                return 0
+              }
+
+              const periodStart = new Date()
+              periodStart.setMonth(periodStart.getMonth() - statsPeriod)
+              periodStart.setHours(0, 0, 0, 0)
+              const endOfToday = new Date()
+              endOfToday.setHours(23, 59, 59, 999)
+
+              const statsMeals = meals.filter(m => {
+                const d = mealReferenceDate(m)
+                return d >= periodStart && d <= endOfToday
+              })
+
+              const impCounts = [0, 0, 0, 0]
+              for (const m of statsMeals) {
+                impCounts[statsImputationIndex(m.count_color)] += 1
+              }
+              const maxImp = Math.max(1, ...impCounts)
+
+              type EmpAgg = { id: string; nom: string; prenom: string; paye: number; invite: number }
+              const byEmp = new Map<string, EmpAgg>()
+              for (const e of employees) {
+                byEmp.set(e.id, { id: e.id, nom: e.nom, prenom: e.prenom, paye: 0, invite: 0 })
+              }
+              for (const m of statsMeals) {
+                const row = byEmp.get(m.employee_id)
+                if (!row) continue
+                if (m.type === 'paye') row.paye += 1
+                else row.invite += 1
+              }
+              const top10 = [...byEmp.values()]
+                .map(r => ({ ...r, total: r.paye + r.invite }))
+                .filter(r => r.total > 0)
+                .sort((a, b) => b.total - a.total)
+                .slice(0, 10)
+              const maxTopTotal = Math.max(1, ...top10.map(r => r.total))
+
+              const startChartMonth = new Date(periodStart.getFullYear(), periodStart.getMonth(), 1)
+              const endChartMonth = new Date(endOfToday.getFullYear(), endOfToday.getMonth(), 1)
+              const monthKeys: string[] = []
+              {
+                const cur = new Date(startChartMonth.getTime())
+                const endM = new Date(endChartMonth.getFullYear(), endChartMonth.getMonth(), 1)
+                while (cur.getTime() <= endM.getTime()) {
+                  monthKeys.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`)
+                  cur.setMonth(cur.getMonth() + 1)
+                }
+              }
+
+              function ymOfMeal(m: Meal): string {
+                const dt = mealReferenceDate(m)
+                return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`
+              }
+
+              const monthlyPaye: number[] = monthKeys.map(ym => statsMeals.filter(m => ymOfMeal(m) === ym && m.type === 'paye').length)
+              const monthlyInv: number[] = monthKeys.map(ym => statsMeals.filter(m => ymOfMeal(m) === ym && m.type === 'invite').length)
+              const maxMonthVal = Math.max(1, ...monthlyPaye, ...monthlyInv, 0)
+              const yMax = maxMonthVal + 2
+
+              const W = 800
+              const H = 200
+              const padL = 50
+              const padR = 24
+              const padT = 20
+              const padB = 38
+              const innerW = W - padL - padR
+              const innerH = H - padT - padB
+              const nM = monthKeys.length
+              const xAt = (i: number) => padL + (nM <= 1 ? innerW / 2 : (i / Math.max(1, nM - 1)) * innerW)
+              const yAt = (v: number) => padT + innerH - (v / yMax) * innerH
+
+              const gridYs = [0, 1, 2, 3].map(k => (k / 3) * yMax)
+              const pointsPaye = monthlyPaye.map((v, i) => `${xAt(i)},${yAt(v)}`).join(' ')
+              const pointsInv = monthlyInv.map((v, i) => `${xAt(i) + 6},${yAt(v)}`).join(' ')
+
+              return (
+                <div style={{ display: 'grid', gap: 24 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+                    {([1, 2, 3, 6, 12] as const).map(mo => (
+                      <button
+                        key={mo}
+                        type="button"
+                        onClick={() => setStatsPeriod(mo)}
+                        style={{
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '6px 16px',
+                          borderRadius: 20,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          fontFamily: 'inherit',
+                          background: statsPeriod === mo ? 'var(--primary)' : 'var(--bg3)',
+                          color: statsPeriod === mo ? '#fff' : 'var(--text2)',
+                          transition: 'background .15s, color .15s',
+                        }}
+                      >
+                        {mo} mois
+                      </button>
+                    ))}
+                  </div>
+
+                  <div>
+                    <h1 style={S.pageTitle}>Statistiques</h1>
+                    <p style={S.pageSub}>Analyse des repas sur les {statsPeriod} dernier{statsPeriod > 1 ? 's' : ''} mois (glissant)</p>
+                  </div>
+
+                  <div style={S.card} className="acm-card-mobile">
+                    <span style={S.cardTitle}>Total repas par imputation</span>
+                    <div
+                      className="acm-stats-imp-grid"
+                      style={{ display: 'grid', gap: 16, marginTop: 16, gridTemplateColumns: 'repeat(4, 1fr)' }}
+                    >
+                      {STATS_IMPUTATIONS.map((imp, idx) => {
+                        const cnt = impCounts[idx]
+                        const pct = (cnt / maxImp) * 100
+                        return (
+                          <div
+                            key={imp.label}
+                            style={{
+                              border: '1px solid var(--border)',
+                              borderRadius: 12,
+                              padding: 16,
+                              background: 'var(--bg2)',
+                            }}
+                          >
+                            <div style={{ width: 40, height: 40, borderRadius: 8, background: imp.color, marginBottom: 10 }} />
+                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{imp.label}</div>
+                            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', marginBottom: 10 }}>{cnt}</div>
+                            <div style={{ height: 6, borderRadius: 3, background: 'var(--border2)', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${pct}%`, borderRadius: 3, background: imp.color, transition: 'width .2s' }} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  <div style={S.card} className="acm-card-mobile">
+                    <span style={S.cardTitle}>Top 10 salariés</span>
+                    <div style={{ marginTop: 16, overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 520 }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text3)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                            <th style={{ textAlign: 'left', padding: '10px 8px' }}>Rang</th>
+                            <th style={{ textAlign: 'left', padding: '10px 8px' }}>Nom Prénom</th>
+                            <th style={{ textAlign: 'center', padding: '10px 8px' }}>Payés</th>
+                            <th style={{ textAlign: 'center', padding: '10px 8px' }}>Invités</th>
+                            <th style={{ textAlign: 'center', padding: '10px 8px' }}>Total</th>
+                            <th style={{ textAlign: 'left', padding: '10px 8px', minWidth: 180 }} />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {top10.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} style={{ padding: 24, textAlign: 'center', color: 'var(--text3)' }}>Aucun repas sur la période.</td>
+                            </tr>
+                          ) : (
+                            top10.map((r, idx) => {
+                              const barW = (r.total / maxTopTotal) * 100
+                              const wPaye = r.total ? (r.paye / r.total) * 100 : 0
+                              const wInv = r.total ? (r.invite / r.total) * 100 : 0
+                              return (
+                                <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                  <td style={{ padding: '12px 8px', fontWeight: 700, color: 'var(--primary)' }}>{idx + 1}</td>
+                                  <td style={{ padding: '12px 8px', fontWeight: 600 }}>{r.nom} {r.prenom}</td>
+                                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>{r.paye}</td>
+                                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>{r.invite}</td>
+                                  <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 800 }}>{r.total}</td>
+                                  <td style={{ padding: '12px 8px', verticalAlign: 'middle' }}>
+                                    <div style={{ height: 8, borderRadius: 4, width: `${barW}%`, minWidth: 4, background: 'rgba(0, 51, 107, 0.2)', position: 'relative', overflow: 'hidden' }}>
+                                      <div style={{ display: 'flex', height: '100%', width: '100%' }}>
+                                        <div style={{ width: `${wPaye}%`, background: 'var(--primary)' }} />
+                                        <div style={{ width: `${wInv}%`, background: 'var(--secondary)' }} />
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div style={S.card} className="acm-card-mobile">
+                    <span style={S.cardTitle}>Courbe mensuelle</span>
+                    <div style={{ marginTop: 16, width: '100%' }}>
+                      {monthKeys.length === 0 ? (
+                        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text3)' }}>Pas assez de données pour tracer la courbe.</div>
+                      ) : (
+                        <>
+                          <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label="Repas payés et invités par mois">
+                            {gridYs.map((gv, gi) => {
+                              const yy = yAt(gv)
+                              return (
+                                <line
+                                  key={gi}
+                                  x1={padL}
+                                  y1={yy}
+                                  x2={W - padR}
+                                  y2={yy}
+                                  stroke="var(--border)"
+                                  strokeWidth={1}
+                                  strokeDasharray="4 4"
+                                />
+                              )
+                            })}
+                            {monthKeys.map((ym, i) => {
+                              const moStr = ym.split('-')[1]
+                              const mi = Number(moStr) - 1
+                              const label = MONTH_SHORT_FR[mi] ?? ym
+                              return (
+                                <text
+                                  key={ym}
+                                  x={xAt(i)}
+                                  y={H - 10}
+                                  textAnchor="middle"
+                                  fill="var(--text3)"
+                                  fontSize={11}
+                                >
+                                  {label}
+                                </text>
+                              )
+                            })}
+                            {[0, 1, 2, 3].map(k => {
+                              const gv = (k / 3) * yMax
+                              return (
+                                <text key={k} x={8} y={yAt(gv) + 4} fill="var(--text3)" fontSize={10}>
+                                  {Math.round(gv)}
+                                </text>
+                              )
+                            })}
+                            <polyline fill="none" stroke="var(--primary)" strokeWidth={2.5} points={pointsPaye} />
+                            <polyline fill="none" stroke="var(--secondary)" strokeWidth={2.5} points={pointsInv} />
+                            {monthlyPaye.map((v, i) => (
+                              <circle key={`p-${i}`} cx={xAt(i)} cy={yAt(v)} r={4} fill="var(--primary)">
+                                <title>{`${v} payé${v > 1 ? 's' : ''} (${monthKeys[i]})`}</title>
+                              </circle>
+                            ))}
+                            {monthlyInv.map((v, i) => (
+                              <circle key={`i-${i}`} cx={xAt(i) + 6} cy={yAt(v)} r={4} fill="var(--secondary)">
+                                <title>{`${v} invité${v > 1 ? 's' : ''} (${monthKeys[i]})`}</title>
+                              </circle>
+                            ))}
+                          </svg>
+                          <div style={{ display: 'flex', gap: 12, marginTop: 14, flexWrap: 'wrap' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 20, background: 'var(--bg3)', fontSize: 12, fontWeight: 600 }}>
+                              <span style={{ width: 12, height: 12, borderRadius: 3, background: 'var(--primary)' }} /> Payés
+                            </span>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 20, background: 'var(--bg3)', fontSize: 12, fontWeight: 600 }}>
+                              <span style={{ width: 12, height: 12, borderRadius: 3, background: 'var(--secondary)' }} /> Invités
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
 
             {tab === 'export' && (() => {
               // ── helpers ──────────────────────────────────────────────
@@ -1628,6 +1916,7 @@ export default function Home() {
         {([
           { key: 'saisie',   icon: '✎', label: 'Saisie' },
           { key: 'mensuel',  icon: '◫', label: 'Mensuel' },
+          { key: 'stats',    icon: '▦', label: 'Stats' },
           { key: 'export',   icon: '⬇', label: 'Export' },
           { key: 'salaries', icon: '☰', label: 'Salariés' },
         ] as { key: Tab; icon: string; label: string }[]).map(item => (
@@ -1661,6 +1950,9 @@ export default function Home() {
         .acm-icon-btn:hover { background: #F1F5FF !important; color: var(--primary) !important; }
         button.acm-nav-btn:hover { background: var(--primary-light) !important; border-color: var(--primary) !important; }
         button, a, input, select { transition: all 0.2s ease; }
+        @media (max-width: 700px) {
+          .acm-stats-imp-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
         @media (max-width: 640px) {
           .acm-topbar-breadcrumb { display: none !important; }
           .acm-month-header { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
