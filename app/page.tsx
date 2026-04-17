@@ -1233,7 +1233,6 @@ export default function Home() {
                               background: 'var(--bg2)',
                             }}
                           >
-                            <div style={{ width: 40, height: 40, borderRadius: 8, background: imp.color, marginBottom: 10 }} />
                             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{imp.label}</div>
                             <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', marginBottom: 10 }}>{cnt}</div>
                             <div style={{ height: 6, borderRadius: 3, background: 'var(--border2)', overflow: 'hidden' }}>
