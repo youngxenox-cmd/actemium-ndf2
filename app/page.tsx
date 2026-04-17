@@ -1138,7 +1138,7 @@ export default function Home() {
                 if (m.type === 'paye') row.paye += 1
                 else row.invite += 1
               }
-              const top10 = [...byEmp.values()]
+              const top10 = Array.from(byEmp.values())
                 .map(r => ({ ...r, total: r.paye + r.invite }))
                 .filter(r => r.total > 0)
                 .sort((a, b) => b.total - a.total)
