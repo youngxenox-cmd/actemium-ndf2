@@ -80,7 +80,7 @@ function ColorPicker({ value, onChange, label }: { value: string; onChange: (c: 
             {PRESET_COLORS.map(c => (
               <button key={c} type="button" onClick={() => { onChange(c); setOpen(false) }} style={{
                 width: 26, height: 26, borderRadius: 5, background: c, cursor: 'pointer', flexShrink: 0,
-                border: c === value ? '2px solid var(--primary)' : '1px solid var(--border2)',
+                border: c === value ? '2px solid var(--chart-primary)' : '1px solid var(--border2)',
                 boxShadow: c === value ? '0 0 0 2px var(--primary-light)' : 'none'
               }} />
             ))}
@@ -99,7 +99,7 @@ function ColorPicker({ value, onChange, label }: { value: string; onChange: (c: 
 function SearchInput({ value, onChange, placeholder, inputStyle }: { value: string; onChange: (v: string) => void; placeholder?: string; inputStyle?: CSSProperties }) {
   return (
     <div style={{ position: 'relative' }}>
-      <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', fontSize: 14, pointerEvents: 'none', opacity: 1, fontWeight: 600 }}>⌕</span>
+      <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-accent)', fontSize: 14, pointerEvents: 'none', opacity: 1, fontWeight: 600 }}>⌕</span>
       <input
         style={{ ...S.input, paddingLeft: 30, ...inputStyle }}
         placeholder={placeholder || 'Rechercher…'}
@@ -539,7 +539,7 @@ export default function Home() {
               <button style={S.closeBtn} onClick={() => { setEditMeal(null); setEditMealOriginalDate(null) }}>✕</button>
             </div>
             <div style={{ display: 'grid', gap: 14 }}>
-              <div><label style={S.label}>Salarié</label><div style={{ fontWeight: 500, color: 'var(--primary)' }}>{getEmpName(editMeal.employee_id)}</div></div>
+              <div><label style={S.label}>Salarié</label><div style={{ fontWeight: 500, color: 'var(--text-accent)' }}>{getEmpName(editMeal.employee_id)}</div></div>
               <div>
                 <label style={S.label}>Date</label>
                 <input type="date" style={S.input} value={editMeal.date} onChange={e => setEditMeal(m => m ? { ...m, date: e.target.value } : m)} />
@@ -685,7 +685,7 @@ export default function Home() {
               <button
                 onClick={() => applyDateChange('replace')}
                 style={{ background: 'var(--bg2)', border: '2px solid var(--border2)', borderRadius: 12, padding: '14px 12px', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s ease', display: 'flex', flexDirection: 'column' as const, gap: 8 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--primary)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--primary-light)' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--chart-primary)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--primary-light)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border2)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg2)' }}
               >
                 <span style={{ fontSize: 22 }}>🗑</span>
@@ -835,7 +835,7 @@ export default function Home() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <label style={S.label}>Salarié</label>
                       <div style={{ position: 'relative' }}>
-                        <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', fontSize: 14, pointerEvents: 'none', fontWeight: 600, zIndex: 1 }}>⌕</span>
+                        <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-accent)', fontSize: 14, pointerEvents: 'none', fontWeight: 600, zIndex: 1 }}>⌕</span>
                         <input
                           style={{ ...S.input, paddingLeft: 30 }}
                           placeholder="Rechercher…"
@@ -954,7 +954,7 @@ export default function Home() {
                       </div>
 
                       {mForm.invites.length > 0 && (
-                        <div style={{ marginTop: 10, fontSize: 12, color: 'var(--primary)', background: 'var(--primary-light)', borderRadius: 6, padding: '8px 12px', fontWeight: 500 }}>
+                        <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-accent)', background: 'var(--primary-light)', borderRadius: 6, padding: '8px 12px', fontWeight: 500 }}>
                           → {mForm.invites.length} entrée{mForm.invites.length > 1 ? 's' : ''} «invité» créées automatiquement
                         </div>
                       )}
@@ -1007,7 +1007,7 @@ export default function Home() {
                         if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1) }
                         else setCurrentMonth(m => m - 1)
                       }}>‹</button>
-                      <span style={{ fontWeight: 600, minWidth: 160, textAlign: 'center', color: 'var(--primary)', fontSize: 15 }}>{MONTHS[currentMonth]} {currentYear}</span>
+                      <span style={{ fontWeight: 600, minWidth: 160, textAlign: 'center', color: 'var(--text-accent)', fontSize: 15 }}>{MONTHS[currentMonth]} {currentYear}</span>
                       <button style={S.navBtn} onClick={() => {
                         if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y + 1) }
                         else setCurrentMonth(m => m + 1)
@@ -1062,7 +1062,7 @@ export default function Home() {
 
                       {/* ── En-têtes colonnes ── */}
                       <div className="acm-monthly-table">
-                      <div style={{ display: 'grid', gridTemplateColumns: '180px 72px 72px 72px 1fr', gap: 12, padding: '8px 12px 10px', borderBottom: '1.5px solid var(--border)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.06em', color: 'var(--primary)', minWidth: 560 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '180px 72px 72px 72px 1fr', gap: 12, padding: '8px 12px 10px', borderBottom: '1.5px solid var(--border)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.06em', color: 'var(--text-accent)', minWidth: 560 }}>
                         {([
                           { k: 'nom',    label: 'Nom / Prénom', sortable: true },
                           { k: 'paye',   label: 'Payé',         sortable: true },
@@ -1074,7 +1074,7 @@ export default function Home() {
                           return (
                             <span key={k}
                               onClick={sortable ? () => setSummarySort(p => ({ key: k as 'nom'|'paye'|'invite'|'total', dir: p.key === k && p.dir === 'asc' ? 'desc' : 'asc' })) : undefined}
-                              style={{ cursor: sortable ? 'pointer' : 'default', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 3, justifyContent: k === 'nom' || k === 'repas' ? 'flex-start' : 'center', color: k === 'repas' ? 'var(--text3)' : 'var(--primary)' }}>
+                              style={{ cursor: sortable ? 'pointer' : 'default', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 3, justifyContent: k === 'nom' || k === 'repas' ? 'flex-start' : 'center', color: k === 'repas' ? 'var(--text3)' : 'var(--text-accent)' }}>
                               {label}
                               {sortable && <span style={{ fontSize: 9, opacity: active ? 1 : 0.5 }}>{active ? (summarySort.dir === 'asc' ? '▲' : '▼') : '⇅'}</span>}
                             </span>
@@ -1140,7 +1140,7 @@ export default function Home() {
 
                       {/* ── Ligne totaux ── */}
                       {visibleEmps.length > 0 && (
-                        <div className="acm-total-bar" style={{ display: 'grid', gridTemplateColumns: '180px 72px 72px 72px 1fr', gap: 12, alignItems: 'center', padding: '12px 12px', borderTop: '2px solid var(--primary)', background: 'var(--primary-light)', borderRadius: '0 0 12px 12px', minWidth: 560 }}>
+                        <div className="acm-total-bar" style={{ display: 'grid', gridTemplateColumns: '180px 72px 72px 72px 1fr', gap: 12, alignItems: 'center', padding: '12px 12px', borderTop: '2px solid var(--chart-primary)', background: 'var(--primary-light)', borderRadius: '0 0 12px 12px', minWidth: 560 }}>
                           <span style={{ fontWeight: 700, color: 'var(--totals-fg)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '.05em' }}>Total</span>
                           <span style={{ textAlign: 'center', fontWeight: 800, fontSize: 16, color: 'var(--totals-fg)' }}>{totalPaye}</span>
                           <span style={{ textAlign: 'center', fontWeight: 800, fontSize: 16, color: 'var(--totals-fg)' }}>{totalInvite}</span>
@@ -1331,7 +1331,7 @@ export default function Home() {
                             }}
                           >
                             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{imp.label}</div>
-                            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', marginBottom: 10 }}>{cnt}</div>
+                            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-accent)', marginBottom: 10 }}>{cnt}</div>
                             <div style={{ height: 6, borderRadius: 3, background: 'var(--border2)', overflow: 'hidden' }}>
                               <div style={{ height: '100%', width: `${pct}%`, borderRadius: 3, background: imp.color, transition: 'width .2s' }} />
                             </div>
@@ -1367,7 +1367,7 @@ export default function Home() {
                               const wInv = r.total ? (r.invite / r.total) * 100 : 0
                               return (
                                 <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                  <td style={{ padding: '12px 8px', fontWeight: 700, color: 'var(--primary)' }}>{idx + 1}</td>
+                                  <td style={{ padding: '12px 8px', fontWeight: 700, color: 'var(--text-accent)' }}>{idx + 1}</td>
                                   <td style={{ padding: '12px 8px', fontWeight: 600 }}>{r.nom} {r.prenom}</td>
                                   <td style={{ padding: '12px 8px', textAlign: 'center' }}>{r.paye}</td>
                                   <td style={{ padding: '12px 8px', textAlign: 'center' }}>{r.invite}</td>
@@ -1375,7 +1375,7 @@ export default function Home() {
                                   <td style={{ padding: '12px 8px', verticalAlign: 'middle' }}>
                                     <div style={{ height: 8, borderRadius: 4, width: `${barW}%`, minWidth: 4, background: 'var(--primary-light)', position: 'relative', overflow: 'hidden' }}>
                                       <div style={{ display: 'flex', height: '100%', width: '100%' }}>
-                                        <div style={{ width: `${wPaye}%`, background: 'var(--primary)' }} />
+                                        <div style={{ width: `${wPaye}%`, background: 'var(--chart-primary)' }} />
                                         <div style={{ width: `${wInv}%`, background: 'var(--secondary)' }} />
                                       </div>
                                     </div>
@@ -1437,10 +1437,10 @@ export default function Home() {
                                 </text>
                               )
                             })}
-                            <polyline fill="none" stroke="var(--primary)" strokeWidth={2.5} points={pointsPaye} />
+                            <polyline fill="none" stroke="var(--chart-primary)" strokeWidth={2.5} points={pointsPaye} />
                             <polyline fill="none" stroke="var(--secondary)" strokeWidth={2.5} points={pointsInv} />
                             {monthlyPaye.map((v, i) => (
-                              <circle key={`p-${i}`} cx={xAt(i)} cy={yAt(v)} r={4} fill="var(--primary)">
+                              <circle key={`p-${i}`} cx={xAt(i)} cy={yAt(v)} r={4} fill="var(--chart-primary)">
                                 <title>{`${v} payé${v > 1 ? 's' : ''} (${monthKeys[i]})`}</title>
                               </circle>
                             ))}
@@ -1452,7 +1452,7 @@ export default function Home() {
                           </svg>
                           <div style={{ display: 'flex', gap: 12, marginTop: 14, flexWrap: 'wrap' }}>
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 20, background: 'var(--bg3)', fontSize: 12, fontWeight: 600 }}>
-                              <span style={{ width: 12, height: 12, borderRadius: 3, background: 'var(--primary)' }} /> Payés
+                              <span style={{ width: 12, height: 12, borderRadius: 3, background: 'var(--chart-primary)' }} /> Payés
                             </span>
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 20, background: 'var(--bg3)', fontSize: 12, fontWeight: 600 }}>
                               <span style={{ width: 12, height: 12, borderRadius: 3, background: 'var(--secondary)' }} /> Invités
@@ -1819,7 +1819,7 @@ export default function Home() {
                       </div>
                       {/* header */}
                       <div className="acm-export-table">
-                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(100px,1fr) minmax(88px,1fr) 72px 72px 72px minmax(140px,2fr)', gap: 10, padding: '8px 12px 10px', borderBottom: '1.5px solid var(--border)', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '.04em', color: 'var(--primary)', minWidth: 640 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(100px,1fr) minmax(88px,1fr) 72px 72px 72px minmax(140px,2fr)', gap: 10, padding: '8px 12px 10px', borderBottom: '1.5px solid var(--border)', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '.04em', color: 'var(--text-accent)', minWidth: 640 }}>
                         <span style={{ fontWeight: 700 }}>NOM</span>
                         <span style={{ fontWeight: 700 }}>Prénom</span>
                         <span style={{ textAlign: 'center', fontWeight: 700 }}>Repas</span>
@@ -1834,7 +1834,7 @@ export default function Home() {
                           <span style={{ fontSize: 13 }}>{r.emp.prenom}</span>
                           <span style={{ textAlign:'center', fontWeight: 700, fontSize: 14 }}>{r.paye}</span>
                           <span style={{ textAlign:'center', fontWeight: 700, fontSize: 14 }}>{r.invite}</span>
-                          <span style={{ textAlign:'center', fontWeight: 800, fontSize: 15, color: 'var(--primary)' }}>{r.total}</span>
+                          <span style={{ textAlign:'center', fontWeight: 800, fontSize: 15, color: 'var(--text-accent)' }}>{r.total}</span>
                           <span style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>
                             {r.commentRich.map((seg, i) =>
                               seg.isStrike ? (
@@ -1849,7 +1849,7 @@ export default function Home() {
                         </div>
                       ))}
                       {/* totaux */}
-                      <div className="acm-total-bar" style={{ display: 'grid', gridTemplateColumns: 'minmax(100px,1fr) minmax(88px,1fr) 72px 72px 72px minmax(140px,2fr)', gap: 10, alignItems: 'center', padding: '12px 12px', borderTop: '2px solid var(--primary)', background: 'var(--primary-light)', borderRadius: '0 0 12px 12px', minWidth: 640 }}>
+                      <div className="acm-total-bar" style={{ display: 'grid', gridTemplateColumns: 'minmax(100px,1fr) minmax(88px,1fr) 72px 72px 72px minmax(140px,2fr)', gap: 10, alignItems: 'center', padding: '12px 12px', borderTop: '2px solid var(--chart-primary)', background: 'var(--primary-light)', borderRadius: '0 0 12px 12px', minWidth: 640 }}>
                         <span style={{ fontWeight: 700, color: 'var(--totals-fg)', fontSize: 12, textTransform: 'uppercase' as const, letterSpacing: '.05em', gridColumn: '1/3' }}>Total</span>
                         <span style={{ textAlign:'center', fontWeight: 800, fontSize: 15, color: 'var(--totals-fg)' }}>{rows.reduce((a,r)=>a+r.paye,0)}</span>
                         <span style={{ textAlign:'center', fontWeight: 800, fontSize: 15, color: 'var(--totals-fg)' }}>{rows.reduce((a,r)=>a+r.invite,0)}</span>
@@ -1907,7 +1907,7 @@ export default function Home() {
                         <div style={{ fontWeight: 500, color: 'var(--text)' }}>
                           {e.nom} {e.prenom}
                           {e.grand_deplacement && (
-                            <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 600, color: 'var(--primary)', background: 'var(--primary-light)', padding: '2px 6px', borderRadius: 4, verticalAlign: 'middle' }}>Grand déplacement</span>
+                            <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 600, color: 'var(--text-accent)', background: 'var(--primary-light)', padding: '2px 6px', borderRadius: 4, verticalAlign: 'middle' }}>Grand déplacement</span>
                           )}
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>{meals.filter(m => m.employee_id === e.id).length} repas enregistrés</div>
@@ -2042,9 +2042,9 @@ export default function Home() {
         .acm-btn-primary:active:not(:disabled) { transform: translateY(0) !important; box-shadow: 0 2px 8px var(--primary-glow) !important; }
         .acm-btn-ghost:hover:not(:disabled) { background: var(--btn-ghost-hover) !important; border-color: var(--input-hover-bd) !important; color: var(--text) !important; }
         .acm-btn-danger:hover:not(:disabled) { background: var(--btn-danger-hover) !important; border-color: var(--btn-danger-bd) !important; }
-        .acm-btn-outline:hover { background: var(--primary-light) !important; border-color: var(--primary) !important; }
-        .acm-icon-btn:hover { background: var(--icon-btn-hover) !important; color: var(--primary) !important; }
-        button.acm-nav-btn:hover { background: var(--primary-light) !important; border-color: var(--primary) !important; }
+        .acm-btn-outline:hover { background: var(--primary-light) !important; border-color: var(--chart-primary) !important; }
+        .acm-icon-btn:hover { background: var(--icon-btn-hover) !important; color: var(--text-accent) !important; }
+        button.acm-nav-btn:hover { background: var(--primary-light) !important; border-color: var(--chart-primary) !important; }
         button, a, input, select { transition: all 0.2s ease; }
         @media (max-width: 700px) {
           .acm-stats-imp-grid { grid-template-columns: repeat(2, 1fr) !important; }
@@ -2099,7 +2099,7 @@ const S = {
   cardSecondary: { background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 14, padding: '28px', boxShadow: 'var(--shadow-md)' } as CSSProperties,
   cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22, gap: 12 } as CSSProperties,
   cardTitle: { fontWeight: 600, fontSize: 15.5, color: 'var(--text)', letterSpacing: '-.02em' } as CSSProperties,
-  pageTitle: { fontWeight: 600, fontSize: 24, color: 'var(--text)', letterSpacing: '-.03em', lineHeight: 1.3, borderLeft: '4px solid var(--primary)', paddingLeft: 14 } as CSSProperties,
+  pageTitle: { fontWeight: 600, fontSize: 24, color: 'var(--text)', letterSpacing: '-.03em', lineHeight: 1.3, borderLeft: '4px solid var(--chart-primary)', paddingLeft: 14 } as CSSProperties,
   pageSub: { fontSize: 14, color: 'var(--text3)', marginTop: 6, fontWeight: 400, paddingLeft: 18 } as CSSProperties,
   // ── Form ──
   label: { display: 'flex', alignItems: 'flex-end', minHeight: 20, fontSize: 12, fontWeight: 600, color: 'var(--text2)', letterSpacing: '.03em', marginBottom: 7, textTransform: 'uppercase' as const } as CSSProperties,
@@ -2107,14 +2107,14 @@ const S = {
   // ── Buttons ──
   btnPrimary: { background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-end) 100%)', color: 'var(--toast-fg)', border: 'none', borderRadius: 10, padding: '0 22px', fontWeight: 600, fontSize: 13.5, cursor: 'pointer', transition: 'all 0.2s ease', whiteSpace: 'nowrap', height: 42, display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 8px var(--primary-glow)' } as CSSProperties,
   btnGhost: { background: 'var(--bg)', color: 'var(--text2)', border: '1px solid var(--border2)', borderRadius: 10, padding: '0 18px', fontWeight: 500, fontSize: 13, cursor: 'pointer', transition: 'all .15s', height: 38, display: 'inline-flex', alignItems: 'center' } as CSSProperties,
-  btnOutline: { background: 'transparent', color: 'var(--primary)', border: '1.5px solid var(--primary)', borderRadius: 10, padding: '0 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', height: 36, display: 'inline-flex', alignItems: 'center' } as CSSProperties,
+  btnOutline: { background: 'transparent', color: 'var(--text-accent)', border: '1.5px solid var(--chart-primary)', borderRadius: 10, padding: '0 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', height: 36, display: 'inline-flex', alignItems: 'center' } as CSSProperties,
   btnDanger: { background: 'var(--red-light)', color: 'var(--red)', border: '1px solid var(--red-border)', borderRadius: 10, padding: '0 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', height: 36, display: 'inline-flex', alignItems: 'center' } as CSSProperties,
   iconBtn: { background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: '5px 7px', fontSize: 14, borderRadius: 7, transition: 'color .1s, background .1s', display: 'inline-flex', alignItems: 'center' } as CSSProperties,
-  navBtn: { background: 'var(--bg)', border: '1px solid var(--border2)', color: 'var(--primary)', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', fontSize: 18, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' } as CSSProperties,
+  navBtn: { background: 'var(--bg)', border: '1px solid var(--border2)', color: 'var(--text-accent)', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', fontSize: 18, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' } as CSSProperties,
   // ── Badges ──
-  badge: { background: 'var(--primary-light)', color: 'var(--primary)', padding: '3px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, border: '1px solid var(--focus-ring)' } as CSSProperties,
+  badge: { background: 'var(--primary-light)', color: 'var(--text-accent)', padding: '3px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, border: '1px solid var(--focus-ring)' } as CSSProperties,
   badgePaye: { display: 'inline-flex', alignItems: 'center', padding: '3px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: 'var(--green-light)', color: 'var(--green-fg)', border: '1px solid var(--green-border)' } as CSSProperties,
-  badgeInvite: { display: 'inline-flex', alignItems: 'center', padding: '3px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: 'var(--primary-light)', color: 'var(--primary)', border: '1px solid var(--focus-ring)' } as CSSProperties,
+  badgeInvite: { display: 'inline-flex', alignItems: 'center', padding: '3px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: 'var(--primary-light)', color: 'var(--text-accent)', border: '1px solid var(--focus-ring)' } as CSSProperties,
   // ── Tables ──
   tableWrap: { } as CSSProperties,
   tableHead: {

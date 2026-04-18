@@ -16,6 +16,9 @@
   --primary-hover:   #002952;
   --primary-glow:    rgba(0, 51, 107, 0.25);
   --primary-end:     #1e5a9e;
+  /* Texte / accents lisibles (bleu identité sur fond clair) */
+  --text-accent:     #00336B;
+  --chart-primary:   #00336B;
   --secondary:       #9AC00C;
   --secondary-light: #f0f8e0;
   --secondary-fg:    #3a4a00;
@@ -71,6 +74,9 @@
   --primary-hover:   #1a4d8c;
   --primary-glow:    rgba(0, 80, 160, 0.35);
   --primary-end:     #2563a8;
+  /* Texte : bleu très clair / quasi-blanc (le #00336B seul est illisible sur fond sombre) */
+  --text-accent:     #e8f4ff;
+  --chart-primary:   #7dd3fc;
   --secondary:       #9AC00C;
   --secondary-light: rgba(154, 192, 12, 0.12);
   --secondary-fg:    #c8e860;
@@ -263,7 +269,7 @@ input:hover:not(:focus) { border-color: var(--border2) !important; }
 
 .acm-nav-item.active {
   background: var(--nav-active-bg);
-  color: var(--primary);
+  color: var(--text-accent);
   font-weight: 600;
 }
 
@@ -274,7 +280,7 @@ input:hover:not(:focus) { border-color: var(--border2) !important; }
   top: 8px;
   bottom: 8px;
   width: 3px;
-  background: var(--primary);
+  background: var(--chart-primary);
   border-radius: 0 3px 3px 0;
 }
 
@@ -319,7 +325,7 @@ input:hover:not(:focus) { border-color: var(--border2) !important; }
 }
 .acm-topbar-theme:hover {
   background: var(--primary-light);
-  border-color: var(--primary);
+  border-color: var(--chart-primary);
 }
 
 @media (max-width: 900px) {
@@ -422,7 +428,7 @@ input[type=date]::-webkit-calendar-picker-indicator {
 .acm-nav-btn {
   background: var(--bg);
   border: 1px solid var(--border2);
-  color: var(--primary);
+  color: var(--text-accent);
   border-radius: var(--radius-sm);
   width: 36px;
   height: 36px;
@@ -436,7 +442,7 @@ input[type=date]::-webkit-calendar-picker-indicator {
 }
 .acm-nav-btn:hover {
   background: var(--primary-light);
-  border-color: var(--primary);
+  border-color: var(--chart-primary);
 }
 
 /* ═══════════════════════════════════════════════
@@ -604,7 +610,7 @@ input[type=date]::-webkit-calendar-picker-indicator {
   }
 
   .acm-bottom-nav-item.active {
-    color: var(--primary);
+    color: var(--text-accent);
   }
 
   .acm-bottom-nav-item.active .bnav-icon {
@@ -612,6 +618,6 @@ input[type=date]::-webkit-calendar-picker-indicator {
   }
 
   .acm-bottom-nav-item:hover {
-    color: var(--primary);
+    color: var(--text-accent);
   }
 }
