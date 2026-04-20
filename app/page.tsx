@@ -9,6 +9,30 @@ const supabase = createClient()
 /** Code d’accès à l’application (contrôle côté client — ne remplace pas une auth serveur) */
 const APP_ACCESS_CODE = 'Actemium2026*'
 const ACCESS_SESSION_KEY = 'gdm-app-access'
+/** Profil persistant (localStorage) — survit fermeture d’onglet / nouvelle session code */
+const PROFILE_STORAGE_KEY = 'gdm-local-profile'
+
+type LocalProfileState = { nom: string; prenom: string; poste: string; avatar: string; email: string }
+
+const EMPTY_PROFILE: LocalProfileState = { nom: '', prenom: '', poste: '', avatar: '', email: '' }
+
+function loadProfileFromStorage(): LocalProfileState {
+  if (typeof window === 'undefined') return { ...EMPTY_PROFILE }
+  try {
+    const raw = localStorage.getItem(PROFILE_STORAGE_KEY)
+    if (!raw) return { ...EMPTY_PROFILE }
+    const p = JSON.parse(raw) as Record<string, unknown>
+    return {
+      nom: String(p.nom ?? ''),
+      prenom: String(p.prenom ?? ''),
+      poste: String(p.poste ?? ''),
+      avatar: String(p.avatar ?? ''),
+      email: String(p.email ?? ''),
+    }
+  } catch {
+    return { ...EMPTY_PROFILE }
+  }
+}
 
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
 
@@ -197,36 +221,49 @@ export default function Home() {
   }, [darkMode])
 
   // ── Profil (stockage local uniquement, sans compte Supabase Auth) ──
-  const [profile, setProfile] = useState({ nom: '', prenom: '', poste: '', avatar: '', email: '' })
+  const [profile, setProfile] = useState<LocalProfileState>(EMPTY_PROFILE)
   const [showProfile, setShowProfile] = useState(false)
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('gdm-local-profile')
-      if (raw) {
-        const p = JSON.parse(raw) as Record<string, string>
-        setProfile({
-          nom: p.nom || '',
-          prenom: p.prenom || '',
-          poste: p.poste || '',
-          avatar: p.avatar || '',
-          email: p.email || '',
-        })
-      }
-    } catch { /* ignore */ }
+    setProfile(loadProfileFromStorage())
   }, [])
+
+  /** À chaque retour dans l’app (après saisie du code), resynchroniser le profil depuis le disque */
+  useEffect(() => {
+    if (accessUnlocked !== true) return
+    setProfile(loadProfileFromStorage())
+  }, [accessUnlocked])
+
+  /** Si un autre onglet modifie le profil, mettre à jour l’affichage */
+  useEffect(() => {
+    function onStorage(e: StorageEvent) {
+      if (e.key !== PROFILE_STORAGE_KEY) return
+      setProfile(loadProfileFromStorage())
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+
+  function showToast(msg: string, type: 'ok' | 'err' = 'ok') {
+    setToast({ msg, type })
+    setTimeout(() => setToast({ msg: '', type: 'ok' }), 2800)
+  }
 
   function saveProfile() {
     setProfileSaving(true)
     try {
-      localStorage.setItem('gdm-local-profile', JSON.stringify(profile))
-    } finally {
-      setProfileSaving(false)
+      const payload = JSON.stringify(profile)
+      localStorage.setItem(PROFILE_STORAGE_KEY, payload)
+      setProfile(loadProfileFromStorage())
       setProfileSaved(true)
       setTimeout(() => setProfileSaved(false), 2000)
+    } catch {
+      showToast('Enregistrement impossible (stockage plein ou refusé). Réessayez avec une photo plus légère.', 'err')
+    } finally {
+      setProfileSaving(false)
     }
   }
 
@@ -236,11 +273,6 @@ export default function Home() {
     const reader = new FileReader()
     reader.onload = (ev) => { setProfile(p => ({ ...p, avatar: ev.target?.result as string })) }
     reader.readAsDataURL(file)
-  }
-
-  function showToast(msg: string, type: 'ok' | 'err' = 'ok') {
-    setToast({ msg, type })
-    setTimeout(() => setToast({ msg: '', type: 'ok' }), 2800)
   }
 
   const fetchAll = useCallback(async () => {
