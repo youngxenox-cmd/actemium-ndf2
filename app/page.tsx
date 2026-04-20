@@ -80,7 +80,7 @@ function ColorPicker({ value, onChange, label }: { value: string; onChange: (c: 
             {PRESET_COLORS.map(c => (
               <button key={c} type="button" onClick={() => { onChange(c); setOpen(false) }} style={{
                 width: 26, height: 26, borderRadius: 5, background: c, cursor: 'pointer', flexShrink: 0,
-                border: c === value ? '2px solid var(--chart-primary)' : '1px solid var(--border2)',
+                border: c === value ? '2px solid var(--line-strong)' : '1px solid var(--border2)',
                 boxShadow: c === value ? '0 0 0 2px var(--primary-light)' : 'none'
               }} />
             ))}
@@ -685,7 +685,7 @@ export default function Home() {
               <button
                 onClick={() => applyDateChange('replace')}
                 style={{ background: 'var(--bg2)', border: '2px solid var(--border2)', borderRadius: 12, padding: '14px 12px', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s ease', display: 'flex', flexDirection: 'column' as const, gap: 8 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--chart-primary)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--primary-light)' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--line-strong)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--primary-light)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border2)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg2)' }}
               >
                 <span style={{ fontSize: 22 }}>🗑</span>
@@ -1140,7 +1140,7 @@ export default function Home() {
 
                       {/* ── Ligne totaux ── */}
                       {visibleEmps.length > 0 && (
-                        <div className="acm-total-bar" style={{ display: 'grid', gridTemplateColumns: '180px 72px 72px 72px 1fr', gap: 12, alignItems: 'center', padding: '12px 12px', borderTop: '2px solid var(--chart-primary)', background: 'var(--primary-light)', borderRadius: '0 0 12px 12px', minWidth: 560 }}>
+                        <div className="acm-total-bar" style={{ display: 'grid', gridTemplateColumns: '180px 72px 72px 72px 1fr', gap: 12, alignItems: 'center', padding: '12px 12px', borderTop: '2px solid var(--line-strong)', background: 'var(--primary-light)', borderRadius: '0 0 12px 12px', minWidth: 560 }}>
                           <span style={{ fontWeight: 700, color: 'var(--totals-fg)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '.05em' }}>Total</span>
                           <span style={{ textAlign: 'center', fontWeight: 800, fontSize: 16, color: 'var(--totals-fg)' }}>{totalPaye}</span>
                           <span style={{ textAlign: 'center', fontWeight: 800, fontSize: 16, color: 'var(--totals-fg)' }}>{totalInvite}</span>
@@ -1849,7 +1849,7 @@ export default function Home() {
                         </div>
                       ))}
                       {/* totaux */}
-                      <div className="acm-total-bar" style={{ display: 'grid', gridTemplateColumns: 'minmax(100px,1fr) minmax(88px,1fr) 72px 72px 72px minmax(140px,2fr)', gap: 10, alignItems: 'center', padding: '12px 12px', borderTop: '2px solid var(--chart-primary)', background: 'var(--primary-light)', borderRadius: '0 0 12px 12px', minWidth: 640 }}>
+                      <div className="acm-total-bar" style={{ display: 'grid', gridTemplateColumns: 'minmax(100px,1fr) minmax(88px,1fr) 72px 72px 72px minmax(140px,2fr)', gap: 10, alignItems: 'center', padding: '12px 12px', borderTop: '2px solid var(--line-strong)', background: 'var(--primary-light)', borderRadius: '0 0 12px 12px', minWidth: 640 }}>
                         <span style={{ fontWeight: 700, color: 'var(--totals-fg)', fontSize: 12, textTransform: 'uppercase' as const, letterSpacing: '.05em', gridColumn: '1/3' }}>Total</span>
                         <span style={{ textAlign:'center', fontWeight: 800, fontSize: 15, color: 'var(--totals-fg)' }}>{rows.reduce((a,r)=>a+r.paye,0)}</span>
                         <span style={{ textAlign:'center', fontWeight: 800, fontSize: 15, color: 'var(--totals-fg)' }}>{rows.reduce((a,r)=>a+r.invite,0)}</span>
@@ -2042,9 +2042,9 @@ export default function Home() {
         .acm-btn-primary:active:not(:disabled) { transform: translateY(0) !important; box-shadow: 0 2px 8px var(--primary-glow) !important; }
         .acm-btn-ghost:hover:not(:disabled) { background: var(--btn-ghost-hover) !important; border-color: var(--input-hover-bd) !important; color: var(--text) !important; }
         .acm-btn-danger:hover:not(:disabled) { background: var(--btn-danger-hover) !important; border-color: var(--btn-danger-bd) !important; }
-        .acm-btn-outline:hover { background: var(--primary-light) !important; border-color: var(--chart-primary) !important; }
+        .acm-btn-outline:hover { background: var(--primary-light) !important; border-color: var(--line-strong) !important; }
         .acm-icon-btn:hover { background: var(--icon-btn-hover) !important; color: var(--text-accent) !important; }
-        button.acm-nav-btn:hover { background: var(--primary-light) !important; border-color: var(--chart-primary) !important; }
+        button.acm-nav-btn:hover { background: var(--primary-light) !important; border-color: var(--line-strong) !important; }
         button, a, input, select { transition: all 0.2s ease; }
         @media (max-width: 700px) {
           .acm-stats-imp-grid { grid-template-columns: repeat(2, 1fr) !important; }
@@ -2099,7 +2099,7 @@ const S = {
   cardSecondary: { background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 14, padding: '28px', boxShadow: 'var(--shadow-md)' } as CSSProperties,
   cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22, gap: 12 } as CSSProperties,
   cardTitle: { fontWeight: 600, fontSize: 15.5, color: 'var(--text)', letterSpacing: '-.02em' } as CSSProperties,
-  pageTitle: { fontWeight: 600, fontSize: 24, color: 'var(--text)', letterSpacing: '-.03em', lineHeight: 1.3, borderLeft: '4px solid var(--chart-primary)', paddingLeft: 14 } as CSSProperties,
+  pageTitle: { fontWeight: 600, fontSize: 24, color: 'var(--text)', letterSpacing: '-.03em', lineHeight: 1.3, borderLeft: '4px solid var(--title-bar)', paddingLeft: 14 } as CSSProperties,
   pageSub: { fontSize: 14, color: 'var(--text3)', marginTop: 6, fontWeight: 400, paddingLeft: 18 } as CSSProperties,
   // ── Form ──
   label: { display: 'flex', alignItems: 'flex-end', minHeight: 20, fontSize: 12, fontWeight: 600, color: 'var(--text2)', letterSpacing: '.03em', marginBottom: 7, textTransform: 'uppercase' as const } as CSSProperties,
@@ -2107,7 +2107,7 @@ const S = {
   // ── Buttons ──
   btnPrimary: { background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-end) 100%)', color: 'var(--toast-fg)', border: 'none', borderRadius: 10, padding: '0 22px', fontWeight: 600, fontSize: 13.5, cursor: 'pointer', transition: 'all 0.2s ease', whiteSpace: 'nowrap', height: 42, display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 8px var(--primary-glow)' } as CSSProperties,
   btnGhost: { background: 'var(--bg)', color: 'var(--text2)', border: '1px solid var(--border2)', borderRadius: 10, padding: '0 18px', fontWeight: 500, fontSize: 13, cursor: 'pointer', transition: 'all .15s', height: 38, display: 'inline-flex', alignItems: 'center' } as CSSProperties,
-  btnOutline: { background: 'transparent', color: 'var(--text-accent)', border: '1.5px solid var(--chart-primary)', borderRadius: 10, padding: '0 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', height: 36, display: 'inline-flex', alignItems: 'center' } as CSSProperties,
+  btnOutline: { background: 'transparent', color: 'var(--text-accent)', border: '1.5px solid var(--line-strong)', borderRadius: 10, padding: '0 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', height: 36, display: 'inline-flex', alignItems: 'center' } as CSSProperties,
   btnDanger: { background: 'var(--red-light)', color: 'var(--red)', border: '1px solid var(--red-border)', borderRadius: 10, padding: '0 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', height: 36, display: 'inline-flex', alignItems: 'center' } as CSSProperties,
   iconBtn: { background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: '5px 7px', fontSize: 14, borderRadius: 7, transition: 'color .1s, background .1s', display: 'inline-flex', alignItems: 'center' } as CSSProperties,
   navBtn: { background: 'var(--bg)', border: '1px solid var(--border2)', color: 'var(--text-accent)', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', fontSize: 18, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' } as CSSProperties,
