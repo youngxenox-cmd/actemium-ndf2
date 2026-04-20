@@ -725,7 +725,7 @@ export default function Home() {
       <aside className="acm-sidebar">
         <div className="acm-sidebar-logo-wrap">
           <img
-            src="/logo-generale-maintenance.png"
+            src={darkMode ? '/logo-generale-maintenance-dark.png' : '/logo-generale-maintenance.png'}
             alt="Generale de Maintenance"
             className="acm-sidebar-logo"
             width={812}
